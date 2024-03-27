@@ -2,6 +2,7 @@ const axios = require("axios");
 const human = require("humanparser");
 const licensesAvail = require("./assets/data/licenses.json");
 const yaml = require("js-yaml");
+const { parsed } = require("yargs");
 
 /**
  * This is the main entrypoint to your Probot app
@@ -24,17 +25,24 @@ module.exports = (app) => {
 
       if (!license) {
         // If issue has been created, create one
+        
         const title = "No license found";
         const body =
-          "No license was found in your repository, please reply with the identifier of the license you would like us to generate for you.";
-        await createIssue(context, owner, repo, title, body);
+        "No license was found in your repository, please reply with the identifier of the license you would like from the following [list](https://spdx.org/licenses/) you would like us to generate for you.";
+        let verify = await verifyFirstIssue(context, owner, repo, title);
+        if (!verify) {
+          await createIssue(context, owner, repo, title, body);
+        }
       }
-
+      
       if (!citation) {
         const title = "No citation found";
         const body =
-          "No citation was found in your repository, please reply with YES and mention 'probot-license-test' to generate a CITATION.cff file for you.";
-        await createIssue(context, owner, repo, title, body);
+        "No citation was found in your repository, please reply with YES and mention 'probot-license-test' to generate a CITATION.cff file for you.";
+        let verify = await verifyFirstIssue(context, owner, repo, title);
+        if (!verify) {
+          await createIssue(context, owner, repo, title, body);
+        }
       }
     }
   });
@@ -54,15 +62,21 @@ module.exports = (app) => {
       if (!license) {
         const title = "No license found";
         const body =
-          "No license was found in your repository, please reply with the identifier of the license you would like us to generate for you.";
-        await createIssue(context, owner, repo, title, body);
+        "No license was found in your repository, please reply with the identifier of the license you would like from the following [list](https://spdx.org/licenses/) you would like us to generate for you.";
+        let verify = await verifyFirstIssue(context, owner, repo, title);
+        if (!verify) {
+          await createIssue(context, owner, repo, title, body);
+        }
       }
 
       if (!citation) {
         const title = "No citation found";
         const body =
           "No citation was found in your repository, please reply with YES and mention 'probot-license-test' to generate a CITATION.cff file for you.";
-        await createIssue(context, owner, repo, title, body);
+        let verify = await verifyFirstIssue(context, owner, repo, title);
+        if (!verify) {
+          await createIssue(context, owner, repo, title, body);
+        }
       }
     }
   });
@@ -81,14 +95,20 @@ module.exports = (app) => {
       const title = "No license found";
       const body =
         "No license was found in your repository, please reply with the identifier of the license you would like us to generate for you.";
-      await createIssue(context, owner, repo, title, body);
+      let verify = await verifyFirstIssue(context, owner, repo, title);
+      if (!verify) {
+        await createIssue(context, owner, repo, title, body);
+      }
     }
 
     if (!citation) {
       const title = "No citation found";
       const body =
         "No citation was found in your repository, please reply with YES and mention 'probot-license-test' to generate a CITATION.cff file for you.";
-      await createIssue(context, owner, repo, title, body);
+      let verify = await verifyFirstIssue(context, owner, repo, title);
+      if (!verify) {
+        await createIssue(context, owner, repo, title, body);
+      }
     }
   });
 
@@ -135,6 +155,32 @@ module.exports = (app) => {
     }
   });
 };
+
+async function verifyFirstIssue(context, owner, repo, title) {
+  // If there is an issue that has been created by the bot, (either opened or closed) don't create another issue
+  const issues = await context.octokit.issues.listForRepo({
+    owner,
+    repo,
+    creator: "probot-license-test[bot]",
+  });
+
+  if (issues.data.length > 0) {
+    // iterate through issues to see if there is an issue with the same title
+    let no_issue = false;
+    for (let i = 0; i < issues.data.length; i++) {
+      if (issues.data[i].title === title) {
+        no_issue = true;
+        break;
+      }
+    }
+
+    if (!no_issue) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+}
 
 async function checkForLicense(context, owner, repo) {
   try {
@@ -209,6 +255,30 @@ async function createIssue(context, owner, repo, title, body) {
 }
 
 async function createLicense(context, owner, repo, license) {
+  // Verify there is no PR open already for the LICENSE file
+  const openPR = await context.octokit.pulls.list({
+    repo,
+    owner,
+    state: "open",
+  });
+
+  let prExists = false;
+  openPR.data.map((pr) => {
+    if (pr.title === "feat: license created for repo") {
+      prExists = true;
+    }
+  });
+
+  if (prExists) {
+    await context.octokit.issues.createComment({
+      repo,
+      owner,
+      issue_number: context.payload.issue.number,
+      body: `A PR for the LICENSE file already exists here: ${openPR.data[0].html_url}`,
+    });
+    return;
+  }
+
   // Create a new file with the license parameter (use axios to get the license from the licenses.json file)
   // Create a new branch with the license file and open a PR
   const licenseRequest = licensesAvail.find(
@@ -220,7 +290,7 @@ async function createLicense(context, owner, repo, license) {
       const response_data = response.data;
 
       // Create a new file
-      const branch = `new-branch-${Math.floor(Math.random() * 9999)}`;
+      const branch = `license-${Math.floor(Math.random() * 9999)}`;
 
       let reference;
       let main_branch;
@@ -294,6 +364,30 @@ async function createLicense(context, owner, repo, license) {
 }
 
 async function createCitation(context, owner, repo) {
+  // Verify there is no PR open already for the CITATION.cff file
+  const openPR = await context.octokit.pulls.list({
+    repo,
+    owner,
+    state: "open",
+  });
+
+  let prExists = false;
+  openPR.data.map((pr) => {
+    if (pr.title === "feat: CITATION.cff created for repo") {
+      prExists = true;
+    }
+  });
+
+  if (prExists) {
+    await context.octokit.issues.createComment({
+      repo,
+      owner,
+      issue_number: context.payload.issue.number,
+      body: `A PR for the CITATION.cff file already exists here: ${openPR.data[0].html_url}`,
+    });
+    return;
+  }
+
   // Create a new file with the contents of the CITATION.cff file
   // Get the list of contributors from the repo
   let contributors = await context.octokit.repos.listContributors({
@@ -308,8 +402,10 @@ async function createCitation(context, owner, repo) {
   });
 
   console.log(languages.data);
-
-  let languagesUsed = Object.keys(languages.data);
+  let languagesUsed = [];
+  if (languages != {}) {
+    languagesUsed = Object.keys(languages.data);
+  }
 
   // Get the release data of the repo
   let releases = await context.octokit.repos.listReleases({
@@ -337,10 +433,26 @@ async function createCitation(context, owner, repo) {
   );
 
   // Parse the user information to get the first and last name
-  let parsedAuthors = userInfo.map((author) => {
-    return human.parseName(author.data.name);
-  });
-
+  let parsedAuthors = [];
+  if (userInfo.length > 0) {
+    userInfo.map((author) => {
+      let authorObj = {};
+      const parsedNames = human.parseName(author.data.name);
+      if (author.data.company) {
+        authorObj["affiliation"] = author.data.company;
+      }
+      if (parsedNames.firstName) {
+        authorObj["given-names"] = parsedNames.firstName;
+      }
+      if (parsedNames.lastName) {
+        authorObj["family-names"] = parsedNames.lastName;
+      }
+      if (author.data.email) {
+        authorObj["email"] = author.data.email;
+      }
+      parsedAuthors.push(authorObj);
+    });
+  }
   // Get the repo description
   let abstract = repoData.data.description;
 
@@ -349,16 +461,16 @@ async function createCitation(context, owner, repo) {
   if (repoData.data.released_at) {
     date_released = repoData.data.released_at;
   } else {
-    date_released = repoData.data.created_at;
+    date_released = new Date().toISOString();
   }
 
   // Get the license of the repo
   let license_name = repoData.data.license;
 
   // Get the homepage of the repo
-  let homepage;
+  let url;
   if (repoData.data.homepage != null) {
-    homepage = repoData.data.homepage;
+    url = repoData.data.homepage;
   }
 
   // Get the keywords of the repo
@@ -370,22 +482,21 @@ async function createCitation(context, owner, repo) {
   // Create json for yaml file
   let citation_obj = {
     "cff-version": "1.2.0",
+    "message": "If you use this software, please cite it as below.",
+    "type": "Software",
+    "identifiers": [
+      {
+        type: "doi",
+        description: "DOI for this software's record on Zenodo ",
+      },
+    ],
+    "repository-code": repoData.data.html_url,
+    "title": repoData.data.name,
   };
 
   if (parsedAuthors.length > 0) {
-    citation_obj["authors"] = [];
-    for (let i = 0; i < parsedAuthors.length; i++) {
-      // add family names, given names, email, orcid
-      citation_obj["authors"].push({
-        "family-names": parsedAuthors[i]["lastName"],
-        "given-names": parsedAuthors[i]["firstName"],
-      });
-    }
+    citation_obj["authors"] = parsedAuthors;
   }
-
-  citation_obj["message"] =
-    "If you use this software, please cite it as below.";
-  citation_obj["type"] = "Software";
 
   if (license_name != null) {
     citation_obj["license"] = license_name["spdx_id"];
@@ -399,10 +510,14 @@ async function createCitation(context, owner, repo) {
     citation_obj["keywords"] = keywords;
   }
 
-  if (homepage != null && homepage != "") {
-    citation_obj["url"] = homepage;
+  if (url != null && url != "") {
+    citation_obj["url"] = url;
   } else {
     citation_obj["url"] = repoData.data.html_url;
+  }
+
+  if (date_released != null && date_released != "") {
+    citation_obj["date-released"] = date_released;
   }
 
   // sort keys alphabetically
@@ -443,6 +558,7 @@ async function createCitation(context, owner, repo) {
     body: `Creating a CITATION.cff file for the repo with the following contributors: ${contributors.data
       .map((contributor) => contributor.login)
       .join(", ")}\n\n
+    user info: ${JSON.stringify(userInfo)}\n\n
     all other metadata: ${JSON.stringify(repoData.data)}\n\n
     all parsedAuthors: ${JSON.stringify(parsedAuthors)}\n\n
     release data: ${JSON.stringify(releases.data)}\n\n
@@ -459,7 +575,7 @@ async function createCitation(context, owner, repo) {
   });
 
   // Create a new file
-  const branch = `new-branch-${Math.floor(Math.random() * 9999)}`;
+  const branch = `citation-${Math.floor(Math.random() * 9999)}`;
 
   let reference;
   let main_branch;
