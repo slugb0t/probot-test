@@ -12,7 +12,8 @@
     "probot-app"
   ],
   "scripts": {
-    "start": "probot run ./index.js && postcss ./public/tailwind.css -o ./public/style.css",
+    "start": "probot run ./index.js",
+    "build": "postcss ./public/tailwind.css -o ./public/style.css",
     "test": "jest"
   },
   "dependencies": {
