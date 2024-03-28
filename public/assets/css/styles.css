@@ -1057,6 +1057,10 @@ video {
     margin-bottom: 1.5rem;
   }
 
+  .md\:flex {
+    display: flex;
+  }
+
   .md\:h-12 {
     height: 3rem;
   }
