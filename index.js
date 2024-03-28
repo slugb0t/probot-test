@@ -25,20 +25,28 @@ module.exports = (app) => {
 
       if (!license) {
         // If issue has been created, create one
-        
-        const title = "No license found";
+
+        const title = "No license file found";
         const body =
-        "No license was found in your repository, please reply with the identifier of the license you would like from the following [list](https://spdx.org/licenses/) you would like us to generate for you.";
+        `To make your software FAIR as per the FAIR-BioRS Guidelines (Llink) a License file is expected the root level of your repository. No such file was found. 
+        It is recommend that you add that when you initiate repositories as the dependencies of your software will be dependent on your LICENSE.
+        If you would like me to generate a license file for you, please comment @probot-license-test with the identifier of the license you would like from the following [list.](https://spdx.org/licenses/)
+        We will then create a new branch with the license file and open a pull request for you to approve.
+        Example for a MIT license:
+        \n
+        @probot-license-test MIT
+        \n
+        `;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
         }
       }
-      
+
       if (!citation) {
-        const title = "No citation found";
+        const title = "No citation file found";
         const body =
-        "No citation was found in your repository, please reply with YES and mention 'probot-license-test' to generate a CITATION.cff file for you.";
+          "No citation was found in your repository, please reply with YES and mention 'probot-license-test' to generate a CITATION.cff file for you.";
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
@@ -60,9 +68,17 @@ module.exports = (app) => {
       let citation = await checkForCitation(context, owner, repo);
 
       if (!license) {
-        const title = "No license found";
+        const title = "No license file found";
         const body =
-        "No license was found in your repository, please reply with the identifier of the license you would like from the following [list](https://spdx.org/licenses/) you would like us to generate for you.";
+        `To make your software FAIR as per the FAIR-BioRS Guidelines (Llink) a License file is expected the root level of your repository. No such file was found. 
+        It is recommend that you add that when you initiate repositories as the dependencies of your software will be dependent on your LICENSE.
+        If you would like me to generate a license file for you, please comment @probot-license-test with the identifier of the license you would like from the following [list.](https://spdx.org/licenses/)
+        We will then create a new branch with the license file and open a pull request for you to approve.
+        Example for a MIT license:
+        \n
+        @probot-license-test MIT
+        \n
+        `;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
@@ -70,7 +86,7 @@ module.exports = (app) => {
       }
 
       if (!citation) {
-        const title = "No citation found";
+        const title = "No citation file found";
         const body =
           "No citation was found in your repository, please reply with YES and mention 'probot-license-test' to generate a CITATION.cff file for you.";
         let verify = await verifyFirstIssue(context, owner, repo, title);
@@ -92,9 +108,17 @@ module.exports = (app) => {
 
     if (!license) {
       // If issue has been created, create one
-      const title = "No license found";
+      const title = "No license file found";
       const body =
-        "No license was found in your repository, please reply with the identifier of the license you would like us to generate for you.";
+      `To make your software as FAIR as per the FAIR-BioRS Guidelines (Llink) a License file is expected the root level of your repository. No such file was found. 
+      It is recommend that you add that when you initiate repositories as the dependencies of your software will be dependent on your LICENSE.
+      If you would like me to generate a license file for you, please comment @probot-license-test with the identifier of the license you would like from the following [list.](https://spdx.org/licenses/)
+      We will then create a new branch with the license file and open a pull request for you to approve.
+      Example for a MIT license:
+      \n
+      @probot-license-test MIT
+      \n
+      `;
       let verify = await verifyFirstIssue(context, owner, repo, title);
       if (!verify) {
         await createIssue(context, owner, repo, title, body);
@@ -102,7 +126,7 @@ module.exports = (app) => {
     }
 
     if (!citation) {
-      const title = "No citation found";
+      const title = "No citation file found";
       const body =
         "No citation was found in your repository, please reply with YES and mention 'probot-license-test' to generate a CITATION.cff file for you.";
       let verify = await verifyFirstIssue(context, owner, repo, title);
@@ -115,10 +139,10 @@ module.exports = (app) => {
   app.on("issue_comment.created", async (context) => {
     const owner = context.payload.repository.owner.login;
     const repo = context.payload.repository.name;
-    const {comment} = context.payload;
+    const { comment } = context.payload;
 
     if (
-      context.payload.issue.title === "No license found" &&
+      context.payload.issue.title === "No license file found" &&
       comment.user.login === owner &&
       comment.body.includes("probot-license-test")
     ) {
@@ -133,16 +157,20 @@ module.exports = (app) => {
       console.log(license);
       console.log(splitComment);
 
+
+      // Select the element after the mention of the bot
+      const selection = splitComment[splitComment.indexOf("@probot-license-test") + 1];
+      console.log(selection);
       // If owner of repo replies then check comment and check if 'probot-license-test' is mentioned
 
       // Check if the user has replied with a license
       // Create a new file with the MIT license on the new branch and open pull request
       context.log.info("Owner responded, creating a new one in a new branch!");
-      await createLicense(context, owner, repo, userComment);
+      await createLicense(context, owner, repo, selection);
     }
 
     if (
-      context.payload.issue.title === "No citation found" &&
+      context.payload.issue.title === "No citation file found" &&
       comment.user.login === owner &&
       comment.body.includes("probot-license-test")
     ) {
@@ -274,8 +302,16 @@ async function createLicense(context, owner, repo, license) {
       repo,
       owner,
       issue_number: context.payload.issue.number,
-      body: `A PR for the LICENSE file already exists here: ${openPR.data[0].html_url}`,
+      body: `A pull request for the LICENSE file already exists here: ${openPR.data[0].html_url}`,
     });
+
+    // // comment on pull request to resolve issue
+    // await context.octokit.issues.createComment({
+    //   repo,
+    //   owner,
+    //   issue_number: openPR.data[0].number,
+    //   body: `Resolves #${context.payload.issue.number}`,
+    // });
     return;
   }
 
@@ -324,7 +360,7 @@ async function createLicense(context, owner, repo, license) {
         repo,
         owner,
         path: "LICENSE",
-        message: `feat: adds ${license} license`,
+        message: `feat: ✨ adds ${license} license`,
         content: Buffer.from(response_data.licenseText).toString("base64"),
         branch,
       });
@@ -333,7 +369,7 @@ async function createLicense(context, owner, repo, license) {
       await context.octokit.pulls.create({
         repo,
         owner,
-        title: "feat: license created for repo",
+        title: "feat: ✨ license file created for repo",
         head: branch,
         base: main_branch,
         body: `Resolves #${context.payload.issue.number}`,
@@ -345,7 +381,7 @@ async function createLicense(context, owner, repo, license) {
         repo,
         owner,
         issue_number: context.payload.issue.number,
-        body: `License ${license} has been added to a new branch and a pull request is awaiting approval.`,
+        body: `${license} license file has been added to a new branch and a pull request is awaiting approval.`,
       });
     } catch (error) {
       console.log("Error fetching license file");
@@ -482,16 +518,16 @@ async function createCitation(context, owner, repo) {
   // Create json for yaml file
   let citation_obj = {
     "cff-version": "1.2.0",
-    "message": "If you use this software, please cite it as below.",
-    "type": "Software",
-    "identifiers": [
+    message: "If you use this software, please cite it as below.",
+    type: "Software",
+    identifiers: [
       {
         type: "doi",
         description: "DOI for this software's record on Zenodo ",
       },
     ],
     "repository-code": repoData.data.html_url,
-    "title": repoData.data.name,
+    title: repoData.data.name,
   };
 
   if (parsedAuthors.length > 0) {
