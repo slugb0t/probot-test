@@ -13,7 +13,8 @@
   ],
   "scripts": {
     "start": "probot run ./index.js",
-    "test": "jest"
+    "test": "jest",
+    "watch-css": "npx tailwindcss -i ./src/input-style.css -o ./public/style.css --watch"
   },
   "dependencies": {
     "axios": "^1.6.8",
