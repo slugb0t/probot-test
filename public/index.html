@@ -6,13 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>codefair.io</title>
 
-    <link href="./css/styles.css" rel="stylesheet" />
+    <link href="./assets/css/styles.css" rel="stylesheet" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="./assets/images/favicon.ico">
   </head>
-  <body>
-    <div class="bg-white pb-6 sm:pb-8 lg:pb-12">
+  <body class="relative">
+    <div class="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80" aria-hidden="true">
+      <div class="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]" style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"></div>
+    </div>
+    <div class="pb-6 sm:pb-8 lg:pb-12">
       <div class="mx-auto max-w-screen-2xl px-4 md:px-8">
         <header
           class="mb-8 flex items-center justify-between py-4 md:mb-12 md:py-8 xl:mb-16"
@@ -36,7 +40,7 @@
           <!-- nav - start -->
           <nav class="hidden gap-12 lg:flex">
             <a
-              href="#"
+              href="#about"
               class="font-inter text-lg font-bold text-gray-600 transition duration-100 hover:text-indigo-500 active:text-indigo-700"
               >About</a
             >
@@ -96,7 +100,7 @@
               </p>
 
               <ul
-                class="ml-4 mb-8 list-disc text-gray-500 md:mb-12 lg:w-4/5 xl:text-lg"
+                class="ml-4 mb-8 lg:list-disc items-start lg:items-center text-gray-500 md:mb-12 lg:w-4/5 xl:text-lg"
               >
                 <li>Findable</li>
                 <li>Accessible</li>
@@ -109,7 +113,7 @@
               class="flex flex-col gap-2.5 sm:flex-row sm:justify-center lg:justify-start"
             >
               <a
-                href="#"
+                href="https://github.com/apps/codefairapp"
                 class="font-inter inline-block rounded-lg bg-indigo-500 px-8 py-3 text-center text-sm font-semibold text-white outline-none ring-indigo-300 transition duration-100 hover:bg-indigo-600 focus-visible:ring active:bg-indigo-700 md:text-base"
                 >Get Started</a
               >
@@ -120,17 +124,17 @@
           <!-- content - end -->
 
           <!-- image - start -->
-          <div class="h-48 lg:h-auto xl:w-5/12 relative">
+          <div class="hidden lg:flex h-48 lg:h-auto xl:w-5/12 relative">
             <img
               src="./assets/images/second_layer_hero.png"
               loading="lazy"
-              alt="Photo by Fakurian Design"
-              class="h-full w-full object-cover object-center absolute left-4 top-20"
+              alt="Hero image"
+              class="h-full w-full object-cover object-center absolute left-4 top-10"
             />
             <img
               src="./assets/images/first_layer_hero.png"
               loading="lazy"
-              alt="Photo by Fakurian Design"
+              alt="Hero image"
               class="h-full w-full object-cover object-center absolute -left-[12rem] top-4"
             />
           </div>
@@ -138,7 +142,10 @@
         </section>
       </div>
     </div>
-    <div id="about" class="bg-white py-6 sm:py-8 lg:py-12">
+    <div class="absolute inset-x-0 top-[calc(80%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(90%-30rem)]" aria-hidden="true">
+      <div class="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-40 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]" style="clip-path: polygon(20% 7%, 88% 10%, 91% 46%, 29% 53%, 79% 78%, 14% 22%, 93% 93%, 25% 88%, 90% 59%); "></div>
+    </div>
+    <div id="about" class="py-6 sm:py-8 lg:py-12">
       <div class="mx-auto max-w-screen-xl px-4 md:px-8">
         <!-- text - start -->
         <div class="mb-0">
@@ -150,14 +157,14 @@
     
       </div>
     </div>
-    <footer id="contact" class="bg-white pt-4 sm:pt-6 lg:pt-8">
+    <footer id="contact" class="pt-4 sm:pt-6 lg:pt-8">
 
       <div class="pt-12">
         <div class="mx-auto max-w-screen-2xl border-t px-4 md:px-8">
           <div
             class="mb-16 mt-16 grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 lg:gap-8"
           >
-            <div class="col-span-full lg:col-span-2">
+            <div class="mt-4 col-span-full lg:col-span-2">
               <!-- logo - start -->
               <div class="mb-4 lg:-mt-2">
                 <a
@@ -227,7 +234,7 @@
 
 
             <!-- nav - start -->
-            <div>
+            <div class="mt-14 sm:mt-0">
               <div
                 class="mb-4 font-bold uppercase tracking-widest text-gray-800"
               >
