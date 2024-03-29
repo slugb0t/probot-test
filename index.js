@@ -135,11 +135,15 @@ module.exports = (app) => {
     const owner = context.payload.repository.owner.login;
     const repo = context.payload.repository.name;
 
+    // Check what is being pushed to the repo
+    const commits = context.payload.commits;
+    console.log(commits);
+
     let license = await checkForLicense(context, owner, repo);
     let citation = await checkForCitation(context, owner, repo);
 
     if (!license) {
-      console.log("No license file found");
+      console.log("No license file found (push)");
       // If issue has been created, create one
       const title = "No license file found";
       const body =
