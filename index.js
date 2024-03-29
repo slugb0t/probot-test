@@ -27,13 +27,7 @@ module.exports = (app) => {
         // If issue has been created, create one
         const title = "No license file found";
         const body =
-        `To make your software reusable a license file is expected at the root level of your repository, as recommended in [FAIR-BioRS Guidelines](https://fair-biors.org). 
-        No such file was found. It is important to choose your license early since it will affect your software’s dependencies. 
-        If you would like me to add a license file for you, please reply herewith the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license).
-        I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. 
-        You can also add a license file yourself and I will close this issue when I detect it on the main branch. 
-        If you need help with choosing a license, you can check out https://choosealicense.com.
-        `;
+        `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
@@ -91,13 +85,7 @@ module.exports = (app) => {
         // If issue has been created, create one
         const title = "No license file found";
         const body =
-        `To make your software reusable a license file is expected at the root level of your repository, as recommended in [FAIR-BioRS Guidelines](https://fair-biors.org). 
-        No such file was found. It is important to choose your license early since it will affect your software’s dependencies. 
-        If you would like me to add a license file for you, please reply herewith the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license).
-        I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. 
-        You can also add a license file yourself and I will close this issue when I detect it on the main branch. 
-        If you need help with choosing a license, you can check out https://choosealicense.com.
-        `;
+        `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
@@ -152,13 +140,7 @@ module.exports = (app) => {
       // If issue has been created, create one
       const title = "No license file found";
       const body =
-      `To make your software reusable a license file is expected at the root level of your repository, as recommended in [FAIR-BioRS Guidelines](https://fair-biors.org). 
-      No such file was found. It is important to choose your license early since it will affect your software’s dependencies. 
-      If you would like me to add a license file for you, please reply herewith the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license).
-      I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. 
-      You can also add a license file yourself and I will close this issue when I detect it on the main branch. 
-      If you need help with choosing a license, you can check out https://choosealicense.com.
-      `;
+      `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
       let verify = await verifyFirstIssue(context, owner, repo, title);
       if (!verify) {
         await createIssue(context, owner, repo, title, body);
@@ -235,22 +217,12 @@ module.exports = (app) => {
       // Check the comment to see if the user has replied with a license
       const userComment = comment.body;
       const splitComment = userComment.split(" ");
-      // license will be the text that includes /<license> (find within userComment indexes)
-      const license = userComment.substring(
-        userComment.indexOf("/") + 1,
-        userComment.length
-      );
-      console.log(license);
-      console.log(splitComment);
-
-
-      // Select the element after the mention of the bot
       const selection = splitComment[splitComment.indexOf("@codefair-bot") + 1];
+
       console.log(selection);
-      // If owner of repo replies then check comment and check if 'license-test-probot' is mentioned
 
       // Check if the user has replied with a license
-      // Create a new file with the MIT license on the new branch and open pull request
+      // Create a new file with the license on the new branch and open pull request
       context.log.info("Owner responded, creating a new one in a new branch!");
       await createLicense(context, owner, repo, selection);
     }
