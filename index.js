@@ -24,6 +24,7 @@ module.exports = (app) => {
       let citation = await checkForCitation(context, owner, repo);
 
       if (!license) {
+        console.log("No license file found");
         // If issue has been created, create one
         const title = "No license file found";
         const body =
@@ -82,6 +83,7 @@ module.exports = (app) => {
       let citation = await checkForCitation(context, owner, repo);
 
       if (!license) {
+        console.log("No license file found");
         // If issue has been created, create one
         const title = "No license file found";
         const body =
@@ -137,6 +139,7 @@ module.exports = (app) => {
     let citation = await checkForCitation(context, owner, repo);
 
     if (!license) {
+      console.log("No license file found");
       // If issue has been created, create one
       const title = "No license file found";
       const body =
@@ -269,14 +272,17 @@ async function verifyFirstIssue(context, owner, repo, title) {
 }
 
 async function checkForLicense(context, owner, repo) {
+  console.log("checking for license")
   try {
     await context.octokit.rest.licenses.getForRepo({
       owner,
       repo,
     });
 
+    console.log("license found!")
     return true;
   } catch (error) {
+    console.log("no license found")
     // Errors when no License is found in the repo
     return false;
   }
@@ -298,6 +304,7 @@ async function checkForCitation(context, owner, repo) {
 
 async function createIssue(context, owner, repo, title, body) {
   // If issue has been created, create one
+  console.log("gathering issues");
   const issue = await context.octokit.issues.listForRepo({
     owner,
     repo: repo,
@@ -319,6 +326,7 @@ async function createIssue(context, owner, repo, title, body) {
     }
 
     if (!no_issue) {
+      console.log("Creating an issue since no open issue was found")
       // Issue has not been created so we create one
       await context.octokit.issues.create({
         repo,
@@ -406,6 +414,7 @@ async function createLicense(context, owner, repo, license) {
       }
 
       // Create a new branch base off the default branch
+      console.log("Creating branch")
       await context.octokit.git.createRef({
         repo,
         owner,
@@ -414,6 +423,7 @@ async function createLicense(context, owner, repo, license) {
       });
 
       // Create a new file
+      console.log("Creating file")
       await context.octokit.repos.createOrUpdateFileContents({
         repo,
         owner,
@@ -424,6 +434,7 @@ async function createLicense(context, owner, repo, license) {
       });
 
       // Create a PR from that branch with the commit of our added file
+      console.log("Creating PR")
       await context.octokit.pulls.create({
         repo,
         owner,
@@ -435,6 +446,7 @@ async function createLicense(context, owner, repo, license) {
       });
 
       // Comment on issue to notify user that license has been added
+      console.log("Commenting on issue")
       await context.octokit.issues.createComment({
         repo,
         owner,
@@ -448,6 +460,7 @@ async function createLicense(context, owner, repo, license) {
     }
   } else {
     // License not found, comment on issue to notify user
+    console.log("License not found")
     await context.octokit.issues.createComment({
       repo,
       owner,
