@@ -27,8 +27,7 @@ module.exports = (app) => {
         console.log("No license file found");
         // If issue has been created, create one
         const title = "No license file found";
-        const body =
-        `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
+        const body = `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
@@ -42,7 +41,7 @@ module.exports = (app) => {
           creator: "license-test-probot[bot]",
           title: "No license file found",
         });
-  
+
         if (issue.data.length > 0) {
           // If title if issue is found, close the issue
           for (let i = 0; i < issue.data.length; i++) {
@@ -86,8 +85,7 @@ module.exports = (app) => {
         console.log("No license file found");
         // If issue has been created, create one
         const title = "No license file found";
-        const body =
-        `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
+        const body = `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
@@ -101,7 +99,7 @@ module.exports = (app) => {
           creator: "license-test-probot[bot]",
           title: "No license file found",
         });
-  
+
         if (issue.data.length > 0) {
           // If title if issue is found, close the issue
           for (let i = 0; i < issue.data.length; i++) {
@@ -138,16 +136,61 @@ module.exports = (app) => {
     // Check what is being pushed to the repo
     const commits = context.payload.commits;
     console.log(commits);
+    console.log("COMMITS AOBVE AND PAYLOAD BELOW");
+    console.log(context.payload);
+
+    // Check if push is going to the default branch
+    let default_branch;
+    try {
+      default_branch = await context.octokit.repos.getBranch({
+        owner,
+        repo,
+        branch: context.payload.repository.default_branch,
+      });
+    } catch (error) {
+      console.log("Error getting default branch");
+      console.log(error);
+      return;
+    }
+
+    console.log("DEFAULT BELOW");
+    console.log(default_branch.data.name);
+    if (context.payload.ref != `refs/heads/${default_branch.data.name}`) {
+      console.log("Not pushing to default branch");
+      return;
+    }
 
     let license = await checkForLicense(context, owner, repo);
     let citation = await checkForCitation(context, owner, repo);
+    if (commits.length > 0) {
+      let licenseBeingPushed = false;
+      let citationBeingPushed = false;
+      // Verify there is no LICENSE file in the commits
+      for (let i = 0; i < commits.length; i++) {
+        if (commits[i].added.includes("LICENSE")) {
+          console.log("LICENSE file added");
+          beingPushed = true;
+          continue;
+        }
+        if (commits[i].added.includes("CITATION.cff")) {
+          console.log("CITATION.cff file added");
+          citationBeingPushed = true;
+          continue;
+        }
+        if (beingPushed) {
+          license = true;
+        }
+        if (citationBeingPushed) {
+          citation = true;
+        }
+      }
+    }
 
     if (!license) {
       console.log("No license file found (push)");
       // If issue has been created, create one
       const title = "No license file found";
-      const body =
-      `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
+      const body = `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software’s dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-bot MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
       let verify = await verifyFirstIssue(context, owner, repo, title);
       if (!verify) {
         await createIssue(context, owner, repo, title, body);
@@ -255,13 +298,18 @@ async function verifyFirstIssue(context, owner, repo, title) {
     owner,
     repo,
     creator: "license-test-probot[bot]",
+    state: "all",
   });
+
+  console.log("VERIFY FIRST ISSUE (OPEN OR CLOSE)")
+  console.log(issues.data)
 
   if (issues.data.length > 0) {
     // iterate through issues to see if there is an issue with the same title
     let no_issue = false;
     for (let i = 0; i < issues.data.length; i++) {
       if (issues.data[i].title === title) {
+        console.log("Issue already exists, will not recreate");
         no_issue = true;
         break;
       }
@@ -276,17 +324,17 @@ async function verifyFirstIssue(context, owner, repo, title) {
 }
 
 async function checkForLicense(context, owner, repo) {
-  console.log("checking for license")
+  console.log("checking for license");
   try {
     await context.octokit.rest.licenses.getForRepo({
       owner,
       repo,
     });
 
-    console.log("license found!")
+    console.log("license found!");
     return true;
   } catch (error) {
-    console.log("no license found")
+    console.log("no license found");
     // Errors when no License is found in the repo
     return false;
   }
@@ -330,7 +378,7 @@ async function createIssue(context, owner, repo, title, body) {
     }
 
     if (!no_issue) {
-      console.log("Creating an issue since no open issue was found")
+      console.log("Creating an issue since no open issue was found");
       // Issue has not been created so we create one
       await context.octokit.issues.create({
         repo,
@@ -398,36 +446,33 @@ async function createLicense(context, owner, repo, license) {
       // Create a new file
       const branch = `license-${Math.floor(Math.random() * 9999)}`;
 
-      let reference;
-      let main_branch;
-
+      let default_branch;
+      let default_branch_name;
       try {
-        reference = await context.octokit.git.getRef({
-          repo,
+        default_branch = await context.octokit.repos.getBranch({
           owner,
-          ref: "heads/main",
+          repo,
+          branch: context.payload.repository.default_branch,
         });
-        main_branch = "main";
+        default_branch_name = default_branch.data.name;
       } catch (error) {
-        reference = await context.octokit.git.getRef({
-          repo,
-          owner,
-          ref: "heads/master",
-        });
-        main_branch = "master";
+        console.log("Error getting default branch");
+        console.log(error);
+        return;
       }
 
       // Create a new branch base off the default branch
-      console.log("Creating branch")
+      console.log(default_branch)
+      console.log("Creating branch");
       await context.octokit.git.createRef({
         repo,
         owner,
         ref: `refs/heads/${branch}`,
-        sha: reference.data.object.sha,
+        sha: default_branch.data.commit.sha,
       });
 
       // Create a new file
-      console.log("Creating file")
+      console.log("Creating file");
       await context.octokit.repos.createOrUpdateFileContents({
         repo,
         owner,
@@ -438,19 +483,19 @@ async function createLicense(context, owner, repo, license) {
       });
 
       // Create a PR from that branch with the commit of our added file
-      console.log("Creating PR")
+      console.log("Creating PR");
       await context.octokit.pulls.create({
         repo,
         owner,
         title: "feat: ✨ LICENSE file added",
         head: branch,
-        base: main_branch,
+        base: default_branch_name,
         body: `Resolves #${context.payload.issue.number}`,
         maintainer_can_modify: true, //Allows maintainers to edit your app's PR
       });
 
       // Comment on issue to notify user that license has been added
-      console.log("Commenting on issue")
+      console.log("Commenting on issue");
       await context.octokit.issues.createComment({
         repo,
         owner,
@@ -464,7 +509,7 @@ async function createLicense(context, owner, repo, license) {
     }
   } else {
     // License not found, comment on issue to notify user
-    console.log("License not found")
+    console.log("License not found");
     await context.octokit.issues.createComment({
       repo,
       owner,
@@ -688,23 +733,19 @@ async function createCitation(context, owner, repo) {
   // Create a new file
   const branch = `citation-${Math.floor(Math.random() * 9999)}`;
 
-  let reference;
-  let main_branch;
-
+  let default_branch;
+  let default_branch_name;
   try {
-    reference = await context.octokit.git.getRef({
-      repo,
+    default_branch = await context.octokit.repos.getBranch({
       owner,
-      ref: "heads/main",
+      repo,
+      branch: context.payload.repository.default_branch,
     });
-    main_branch = "main";
+    default_branch_name = default_branch.data.name;
   } catch (error) {
-    reference = await context.octokit.git.getRef({
-      repo,
-      owner,
-      ref: "heads/master",
-    });
-    main_branch = "master";
+    console.log("Error getting default branch");
+    console.log(error);
+    return;
   }
 
   // Create a new branch base off the default branch
@@ -712,7 +753,7 @@ async function createCitation(context, owner, repo) {
     repo,
     owner,
     ref: `refs/heads/${branch}`,
-    sha: reference.data.object.sha,
+    sha: default_branch.data.commit.sha,
   });
 
   // Create a new file
@@ -731,7 +772,7 @@ async function createCitation(context, owner, repo) {
     owner,
     title: "feat: CITATION.cff created for repo",
     head: branch,
-    base: main_branch,
+    base: default_branch_name,
     body: `Resolves #${context.payload.issue.number}`,
     maintainer_can_modify: true, //Allows maintainers to edit your app's PR
   });
