@@ -304,7 +304,23 @@ module.exports = (app) => {
 
       if (userComment.includes("UPDATE")) {
         // Create a new file with the CITATION.cff file
-        await gatherCitationInfo(context, owner, repo);
+        // Get the yaml context from the userComment
+        // let start = userComment.indexOf("```yaml") + 7;
+        // let end = userComment.indexOf("```", start);
+        // let yamlContext = userComment.substring(start, end);
+        // If userComment does not have the ```yaml, then the user has added without formatting
+        let start = userComment.indexOf("```yaml") + 7;
+        let end = userComment.indexOf("```", start);
+        if (start === -1) {
+          // Get everything except '@codefair-app UPDATE'
+          end = userComment.indexOf("UPDATE") + 6;
+          start = userComment.length;
+        }
+        let yamlContext = userComment.substring(start, end);
+        console.log(yamlContext);
+        console.log("YAML CONTEXT ABOVE");
+        await createCitationFile(context, owner, repo, yamlContext);
+        // console.log(userComment);
       }
 
       if (userComment.includes("CONTINUE")) {
