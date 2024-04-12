@@ -56,15 +56,18 @@ module.exports = (app) => {
         }
       }
 
-      // if (!citation) {
-      //   const title = "No citation file found";
-      //   const body =
-      //     "No citation was found in your repository, please reply with YES and mention 'codefair-app' to generate a CITATION.cff file for you.";
-      //   let verify = await verifyFirstIssue(context, owner, repo, title);
-      //   if (!verify) {
-      //     await createIssue(context, owner, repo, title, body);
-      //   }
-      // }
+      if (!citation && license) {
+        // License was found but no citation file was found
+        const title = "No citation file found";
+        const body =
+          `No CITATION.cff file was found at the root of your repository. It is typically used to let others know how you would like them to cite your work. The citation file format is plain text with human- and machine-readable citation information.
+          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app YES" and I will create a new branch with the CITATION.cff file and open a pull request for you to review and approve. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+          `;
+        let verify = await verifyFirstIssue(context, owner, repo, title);
+        if (!verify) {
+          await createIssue(context, owner, repo, title, body);
+        }
+      }
     }
   });
 
@@ -113,15 +116,17 @@ module.exports = (app) => {
         }
       }
 
-      // if (!citation) {
-      //   const title = "No citation file found";
-      //   const body =
-      //     "No citation was found in your repository, please reply with YES and mention 'codefair-app' to generate a CITATION.cff file for you.";
-      //   let verify = await verifyFirstIssue(context, owner, repo, title);
-      //   if (!verify) {
-      //     await createIssue(context, owner, repo, title, body);
-      //   }
-      // }
+      if (!citation && license) {
+        const title = "No citation file found";
+        const body =
+          `No CITATION.cff file was found at the root of your repository. It is typically used to let others know how you would like them to cite your work. The citation file format is plain text with human- and machine-readable citation information.
+          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app YES" and I will create a new branch with the CITATION.cff file and open a pull request for you to review and approve. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+          `;
+        let verify = await verifyFirstIssue(context, owner, repo, title);
+        if (!verify) {
+          await createIssue(context, owner, repo, title, body);
+        }
+      }
     }
   });
 
@@ -219,38 +224,40 @@ module.exports = (app) => {
       }
     }
 
-    // if (!citation) {
-    //   const title = "No citation file found";
-    //   const body =
-    //     "No citation was found in your repository, please reply with YES and mention 'codefair-app' to generate a CITATION.cff file for you.";
-    //   let verify = await verifyFirstIssue(context, owner, repo, title);
-    //   if (!verify) {
-    //     await createIssue(context, owner, repo, title, body);
-    //   }
-    // } else {
-    //   // Check if issue is open and close it
-    //   const issue = await context.octokit.issues.listForRepo({
-    //     owner,
-    //     repo: repo,
-    //     state: "open",
-    //     creator: "codefair-app[bot]",
-    //     title: "No citation file found",
-    //   });
+    if (!citation && license) {
+      const title = "No citation file found";
+      const body =
+      `No CITATION.cff file was found at the root of your repository. It is typically used to let others know how you would like them to cite your work. The citation file format is plain text with human- and machine-readable citation information.
+      If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app YES" and I will create a new branch with the CITATION.cff file and open a pull request for you to review and approve. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+      `;
+      let verify = await verifyFirstIssue(context, owner, repo, title);
+      if (!verify) {
+        await createIssue(context, owner, repo, title, body);
+      }
+    } else {
+      // Check if issue is open and close it
+      const issue = await context.octokit.issues.listForRepo({
+        owner,
+        repo: repo,
+        state: "open",
+        creator: "codefair-app[bot]",
+        title: "No citation file found",
+      });
 
-    //   if (issue.data.length > 0) {
-    //     // If title if issue is found, close the issue
-    //     for (let i = 0; i < issue.data.length; i++) {
-    //       if (issue.data[i].title === "No citation file found") {
-    //         await context.octokit.issues.update({
-    //           repo,
-    //           owner,
-    //           issue_number: issue.data[i].number,
-    //           state: "closed",
-    //         });
-    //       }
-    //     }
-    //   }
-    // }
+      if (issue.data.length > 0) {
+        // If title if issue is found, close the issue
+        for (let i = 0; i < issue.data.length; i++) {
+          if (issue.data[i].title === "No citation file found") {
+            await context.octokit.issues.update({
+              repo,
+              owner,
+              issue_number: issue.data[i].number,
+              state: "closed",
+            });
+          }
+        }
+      }
+    }
   });
 
   app.on("issue_comment.created", async (context) => {
@@ -291,12 +298,64 @@ module.exports = (app) => {
       const userComment = comment.body;
 
       if (userComment.includes("YES")) {
+        // Gather the information for the CITATION.cff file
+        await gatherCitationInfo(context, owner, repo);
+      }
+
+      if (userComment.includes("UPDATE")) {
         // Create a new file with the CITATION.cff file
-        await createCitation(context, owner, repo);
+        await gatherCitationInfo(context, owner, repo);
+      }
+
+      if (userComment.includes("CONTINUE")) {
+        // Create a new file with the yaml context created by the bot
+        // Get all comments on the issue
+        const comments = await context.octokit.issues.listComments({
+          repo,
+          owner,
+          issue_number: context.payload.issue.number,
+        });
+        // console.log(comments.data);
+
+        // Get the yaml context from the bot's comment
+        let yamlContext;
+        comments.data.map((comment) => {
+          // console.log(comment.body);
+          // console.log(typeof(comment.body));
+          // TODO: WHEN TRANSFERING TO PRODUCTION, CHANGE THE USER TO THE CODEFAIR'S BOT NAME
+          if (comment.performed_via_github_app != null && comment.user.login === "codefair-test[bot]" && comment.body.includes("Here is the information")) {
+            // Grab all the string after ```yaml and before ```
+            let start = comment.body.indexOf("```yaml") + 7;
+            let end = comment.body.indexOf("```", start);
+            yamlContext = comment.body.substring(start, end);
+            console.log(yamlContext);
+            console.log("YAML CONTEXT ABOVE");
+          }
+        });
+        await createCitationFile(context, owner, repo, yamlContext);
       }
     }
   });
 };
+
+async function getDefaultBranch(context, owner, repo) {
+  let default_branch;
+  let default_branch_name;
+
+  try {
+    default_branch = await context.octokit.repos.getBranch({
+      owner,
+      repo,
+      branch: context.payload.repository.default_branch
+    });
+    default_branch_name = default_branch.data.name;
+    return default_branch;
+  } catch(error) {
+    console.log("Error getting the default branch");
+    console.log(error);
+    return;
+  }
+}
 
 async function verifyFirstIssue(context, owner, repo, title) {
   // If there is an issue that has been created by the bot, (either opened or closed) don't create another issue
@@ -526,7 +585,57 @@ async function createLicense(context, owner, repo, license) {
   }
 }
 
-async function createCitation(context, owner, repo) {
+async function createCitationFile(context, owner, repo, citationText) {
+  // Here we take the citation text passed as a parameter
+  // It could from probot's initial gathering or an updated version from the user
+
+  // Create a new branch
+  const branch = `citation-${Math.floor(Math.random() * 9999)}`;
+
+  // Get the default branch of the repo
+  let default_branch = await getDefaultBranch(context, owner, repo);
+  console.log(default_branch);
+  let default_branch_name = default_branch.data.name;
+
+  // Create a new branch based off the default branch
+  await context.octokit.git.createRef({
+    repo,
+    owner,
+    ref: `refs/heads/${branch}`,
+    sha: default_branch.data.commit.sha,
+  });
+
+  // Create a new file
+  await context.octokit.repos.createOrUpdateFileContents({
+    repo,
+    owner,
+    path: "CITATION.cff",
+    message: `feat: ✨ add CITATION.cff file`,
+    content: Buffer.from(citationText).toString("base64"),
+    branch,
+  });
+
+  // Create a PR with the branch
+  await context.octokit.pulls.create({
+    repo,
+    owner,
+    title: "feat: ✨ CITATION.cff create for repo",
+    head: branch,
+    base: default_branch_name,
+    body: `Resolves #${context.payload.issue.number}`,
+    maintainer_can_modify: true,
+  });
+
+  // Comment on issue to notify user that citation has been added
+  await context.octokit.issues.createComment({
+    repo,
+    owner,
+    issue_number: context.payload.issue.number,
+    body: `A CITATION.cff file has been added to a new branch and a pull request is awaiting approval. I will close this issue automatically once the pull request is approved.`,
+  });
+}
+
+async function gatherCitationInfo(context, owner, repo) {
   // Verify there is no PR open already for the CITATION.cff file
   const openPR = await context.octokit.pulls.list({
     repo,
@@ -536,7 +645,7 @@ async function createCitation(context, owner, repo) {
 
   let prExists = false;
   openPR.data.map((pr) => {
-    if (pr.title === "feat: CITATION.cff created for repo") {
+    if (pr.title === "feat: ✨ CITATION.cff created for repo") {
       prExists = true;
     }
   });
@@ -565,6 +674,7 @@ async function createCitation(context, owner, repo) {
   });
 
   console.log(languages.data);
+  console.log("LANGUAGES USED ABOVE");
   let languagesUsed = [];
   if (languages != {}) {
     languagesUsed = Object.keys(languages.data);
@@ -577,6 +687,7 @@ async function createCitation(context, owner, repo) {
   });
 
   console.log(releases.data);
+  console.log("RELEASES DATA ABOVE");
 
   // Get the metadata of the repo
   let repoData = await context.octokit.repos.get({
@@ -596,9 +707,14 @@ async function createCitation(context, owner, repo) {
   );
 
   // Parse the user information to get the first and last name
+  console.log(userInfo);
+  console.log("USER INFO ABOVE");
   let parsedAuthors = [];
   if (userInfo.length > 0) {
     userInfo.map((author) => {
+      if (author.data.type === "Bot") {
+        return;
+      }
       let authorObj = {};
       const parsedNames = human.parseName(author.data.name);
       if (author.data.company) {
@@ -693,94 +809,28 @@ async function createCitation(context, owner, repo) {
 
   let citation_template = yaml.dump(citation_obj);
 
-  // let citation_template = `
-  // abstract: ${repoData.data.description}\n
-  // authors:\n
-
-  // cff-version: 1.2.0\n
-  // # date-released: ${new Date().toISOString()}\n
-  // # identifier:\n
-  // #  - description: "Digital Object Identifier"\n
-  // #    type: "doi"\n
-  // keywords:\n
-  // license: ${repoData.data.license}\n
-  // message: "If you use this software, please cite it as below."\n
-  // repository-artifact: ${repoData.data.html_url}\n
-  // repository-code: ${repoData.data.html_url}\n
-  // title: ${repoData.data.name}\n
-  // type: "Software"\n
-  // url: ${repoData.data.html_url}\n
-  // # version: ${repoData.data.default_branch}\n
-  // `;
+  // Comment the yaml info we gathered and mention if they want us to create the file as if
+  // If they want to add extra info, copy the content and add accordingly then paste back in as comment
+  await context.octokit.issues.createComment({
+    repo,
+    owner,
+    issue_number: context.payload.issue.number,
+    body: "```yaml\n" + citation_template + "\n```" + `\n\nHere is the information I was able to gather from this repo. If you would like to add more please copy the context and update accordingly and reply with "@codefair-app UPDATE". If you would like me to create a PR as is please reply with "@codefair-app CONTINUE".`,
+  });
 
   // Comment information on the issue
-  await context.octokit.issues.createComment({
-    repo,
-    owner,
-    issue_number: context.payload.issue.number,
-    body: `Creating a CITATION.cff file for the repo with the following contributors: ${contributors.data
-      .map((contributor) => contributor.login)
-      .join(", ")}\n\n
-    user info: ${JSON.stringify(userInfo)}\n\n
-    all other metadata: ${JSON.stringify(repoData.data)}\n\n
-    all parsedAuthors: ${JSON.stringify(parsedAuthors)}\n\n
-    release data: ${JSON.stringify(releases.data)}\n\n
-    languages used: ${JSON.stringify(languages.data)}\n\n
-    `,
-  });
-
-  await context.octokit.issues.createComment({
-    repo,
-    owner,
-    issue_number: context.payload.issue.number,
-    body: `${citation_template}
-    `,
-  });
-
-  // Create a new file
-  const branch = `citation-${Math.floor(Math.random() * 9999)}`;
-
-  let default_branch;
-  let default_branch_name;
-  try {
-    default_branch = await context.octokit.repos.getBranch({
-      owner,
-      repo,
-      branch: context.payload.repository.default_branch,
-    });
-    default_branch_name = default_branch.data.name;
-  } catch (error) {
-    console.log("Error getting default branch");
-    console.log(error);
-    return;
-  }
-
-  // Create a new branch base off the default branch
-  await context.octokit.git.createRef({
-    repo,
-    owner,
-    ref: `refs/heads/${branch}`,
-    sha: default_branch.data.commit.sha,
-  });
-
-  // Create a new file
-  await context.octokit.repos.createOrUpdateFileContents({
-    repo,
-    owner,
-    path: "CITATION.cff",
-    message: `feat: add CITATION.cff file`,
-    content: Buffer.from(citation_template).toString("base64"),
-    branch,
-  });
-
-  // Create a PR from that branch with the commit of our added file
-  await context.octokit.pulls.create({
-    repo,
-    owner,
-    title: "feat: CITATION.cff created for repo",
-    head: branch,
-    base: default_branch_name,
-    body: `Resolves #${context.payload.issue.number}`,
-    maintainer_can_modify: true, //Allows maintainers to edit your app's PR
-  });
+  // await context.octokit.issues.createComment({
+  //   repo,
+  //   owner,
+  //   issue_number: context.payload.issue.number,
+  //   body: `Creating a CITATION.cff file for the repo with the following contributors: ${contributors.data
+  //     .map((contributor) => contributor.login)
+  //     .join(", ")}\n\n
+  //   user info: ${JSON.stringify(userInfo)}\n\n
+  //   all other metadata: ${JSON.stringify(repoData.data)}\n\n
+  //   all parsedAuthors: ${JSON.stringify(parsedAuthors)}\n\n
+  //   release data: ${JSON.stringify(releases.data)}\n\n
+  //   languages used: ${JSON.stringify(languages.data)}\n\n
+  //   `,
+  // });
 }
