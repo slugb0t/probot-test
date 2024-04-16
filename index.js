@@ -2,8 +2,7 @@ const axios = require("axios");
 const human = require("humanparser");
 const licensesAvail = require("./public/assets/data/licenses.json");
 const yaml = require("js-yaml");
-const { parsed } = require("yargs");
-
+const { split } = require("postcss/lib/list");
 /**
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
@@ -59,9 +58,8 @@ module.exports = (app) => {
       if (!citation && license) {
         // License was found but no citation file was found
         const title = "No citation file found";
-        const body =
-          `No CITATION.cff file was found at the root of your repository. It is typically used to let others know how you would like them to cite your work. The citation file format is plain text with human- and machine-readable citation information.
-          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app YES" and I will create a new branch with the CITATION.cff file and open a pull request for you to review and approve. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+        const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
+          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
           `;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
@@ -118,9 +116,8 @@ module.exports = (app) => {
 
       if (!citation && license) {
         const title = "No citation file found";
-        const body =
-          `No CITATION.cff file was found at the root of your repository. It is typically used to let others know how you would like them to cite your work. The citation file format is plain text with human- and machine-readable citation information.
-          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app YES" and I will create a new branch with the CITATION.cff file and open a pull request for you to review and approve. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+        const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
+          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
           `;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
@@ -226,9 +223,8 @@ module.exports = (app) => {
 
     if (!citation && license) {
       const title = "No citation file found";
-      const body =
-      `No CITATION.cff file was found at the root of your repository. It is typically used to let others know how you would like them to cite your work. The citation file format is plain text with human- and machine-readable citation information.
-      If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app YES" and I will create a new branch with the CITATION.cff file and open a pull request for you to review and approve. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+      const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
+      If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
       `;
       let verify = await verifyFirstIssue(context, owner, repo, title);
       if (!verify) {
@@ -264,14 +260,7 @@ module.exports = (app) => {
     const owner = context.payload.repository.owner.login;
     const repo = context.payload.repository.name;
     const { comment } = context.payload;
-
-    console.log(comment.author_association);
-    console.log(comment.author_association in ["MEMBER", "OWNER"])
-    console.log(comment.body);
-    console.log(comment.body.includes("codefair-app"))
-    console.log(context.payload.issue.title);
-    console.log(context.payload.issue.title === "No license file found")
-
+    // console.log(comment.body);
     console.log("should all be true above to move forward");
 
     if (
@@ -297,7 +286,7 @@ module.exports = (app) => {
     ) {
       const userComment = comment.body;
 
-      if (userComment.includes("YES")) {
+      if (userComment.includes("Yes")) {
         // Gather the information for the CITATION.cff file
         await gatherCitationInfo(context, owner, repo);
       }
@@ -305,21 +294,15 @@ module.exports = (app) => {
       if (userComment.includes("UPDATE")) {
         // Create a new file with the CITATION.cff file
         // Get the yaml context from the userComment
-        // let start = userComment.indexOf("```yaml") + 7;
-        // let end = userComment.indexOf("```", start);
-        // let yamlContext = userComment.substring(start, end);
-        // If userComment does not have the ```yaml, then the user has added without formatting
-        let start = userComment.indexOf("```yaml") + 7;
-        let end = userComment.indexOf("```", start);
-        if (start === -1) {
-          // Get everything except '@codefair-app UPDATE'
-          end = userComment.indexOf("UPDATE") + 6;
-          start = userComment.length;
-        }
+        let start = userComment.indexOf("- ");
+        let end = userComment.indexOf("@codefair-app UPDATE");
         let yamlContext = userComment.substring(start, end);
-        console.log(yamlContext);
-        console.log("YAML CONTEXT ABOVE");
-        await createCitationFile(context, owner, repo, yamlContext);
+        // Load the input string into a JavaScript object
+        // Split yamlContext into an array of strings based on hyphen
+        let splitContext = yamlContext.split("\r\n").map(item => item.trim());
+        console.log(splitContext);
+
+        // await createCitationFile(context, owner, repo, yaml.dump(mergedObject));
         // console.log(userComment);
       }
 
@@ -336,19 +319,18 @@ module.exports = (app) => {
         // Get the yaml context from the bot's comment
         let yamlContext;
         comments.data.map((comment) => {
-          // console.log(comment.body);
-          // console.log(typeof(comment.body));
           // TODO: WHEN TRANSFERING TO PRODUCTION, CHANGE THE USER TO THE CODEFAIR'S BOT NAME
-          if (comment.performed_via_github_app != null && comment.user.login === "codefair-test[bot]" && comment.body.includes("Here is the information")) {
-            // Grab all the string after ```yaml and before ```
+          if (
+            comment.performed_via_github_app != null &&
+            comment.user.login === "codefair-test[bot]" &&
+            comment.body.includes("Here is the information")
+          ) {
             let start = comment.body.indexOf("```yaml") + 7;
             let end = comment.body.indexOf("```", start);
             yamlContext = comment.body.substring(start, end);
-            console.log(yamlContext);
-            console.log("YAML CONTEXT ABOVE");
           }
         });
-        await createCitationFile(context, owner, repo, yamlContext);
+        await createCitationFile(context, owner, repo, yamlContext.trim());
       }
     }
   });
@@ -362,11 +344,11 @@ async function getDefaultBranch(context, owner, repo) {
     default_branch = await context.octokit.repos.getBranch({
       owner,
       repo,
-      branch: context.payload.repository.default_branch
+      branch: context.payload.repository.default_branch,
     });
     default_branch_name = default_branch.data.name;
     return default_branch;
-  } catch(error) {
+  } catch (error) {
     console.log("Error getting the default branch");
     console.log(error);
     return;
@@ -480,6 +462,111 @@ async function createIssue(context, owner, repo, title, body) {
       body: body,
     });
   }
+}
+
+// TODO: DELETE IF NOT NEEDED
+async function gatherAuthorInformation(yamlContext) {
+  let parsedYaml = yamlContext.indexOf("- authors:\r\n") + "- authors\r\n".length;
+  let parsedYaml2 = yamlContext.indexOf("- cff-version:")
+  let content = yamlContext.substring(parsedYaml, parsedYaml2).trim();
+  // Split based on hyphen
+  let splitContent = content.split("-").map(item => item.replace(/\r\n/g, "").trim());
+  // Remove first element
+  splitContent.shift();
+  // console.log(splitContent)
+  // Create an array of each element in splitContent based on the commas
+  let authors = splitContent.map(item => item.split(","));
+  // trim each item in authors
+  authors = authors.map(item => item.map(author => author.trim()));
+  // console.log(authors);
+  let authorsObj = [];
+  for (let i = 0; i < authors.length; i++) {
+    let authorObj = {};
+    for (let j = 0; j < authors[i].length; j++) {
+      let splitAuthor = authors[i][j].split(":");
+      if (splitAuthor[0].trim().toLowerCase() === "email") {
+        authorObj[splitAuthor[0].trim().toLowerCase()] = splitAuthor[1].trim();
+      }
+      if (splitAuthor[0].trim().toLowerCase() === "name") {
+        let parsedName = human.parseName(splitAuthor[1].trim());
+        if (parsedName.firstName) {
+          authorObj["given-names"] = parsedName.firstName;
+        }
+        if (parsedName.lastName) {
+          authorObj["family-names"] = parsedName.lastName;
+        }
+      }
+      if (splitAuthor[0].trim().toLowerCase() === "affiliation") {
+        authorObj[splitAuthor[0].trim().toLowerCase()] = splitAuthor[1].trim();
+      }
+    }
+    authorsObj.push(authorObj);
+  }
+  console.log(authorsObj);
+  return authorsObj;
+}
+
+async function gatherCitationAuthors(context, owner, repo) {
+  // Get the list of contributors from the repo
+  const contributors = await context.octokit.repos.listContributors({
+    repo,
+    owner,
+  });
+
+
+  // Get user information for each contributors
+  let userInfo = await Promise.all(
+    contributors.data.map(async (contributor) => {
+      return await context.octokit.users.getByUsername({
+        username: contributor.login,
+      });
+    })
+  );
+
+
+  let parsedAuthors = [];
+  if (userInfo.length > 0) {
+    userInfo.map((author) => {
+      if (author.data.type === "Bot") {
+        return;
+      }
+
+      let authorObj = {};
+      const parsedNames = human.parseName(author.data.name);
+      if (author.data.company) {
+        authorObj["affiliation"] = author.data.company;
+      }
+
+      if (parsedNames.firstName) {
+        authorObj["given-names"] = parsedNames.firstName;
+      }
+      if (parsedNames.lastName) {
+        authorObj["family-names"] = parsedNames.lastName;
+      }
+      if (author.data.email) {
+        authorObj["email"] = author.data.email;
+      }
+      parsedAuthors.push(authorObj);
+    });
+  }
+
+  return parsedAuthors;
+}
+
+async function gatherLanguagesUsed(context, owner, repo) {
+  // Get the programming languages used in the repo
+  let languages = await context.octokit.repos.listLanguages({
+    repo,
+    owner,
+  });
+
+  // Parse the data for languages used
+  let languagesUsed = [];
+  if (languages != {}) {
+    languagesUsed = Object.keys(languages.data);
+  }
+
+  return languagesUsed;
 }
 
 async function createLicense(context, owner, repo, license) {
@@ -651,6 +738,25 @@ async function createCitationFile(context, owner, repo, citationText) {
   });
 }
 
+async function getDOI(context, owner, repoName) {
+  try {
+    const readme = await context.octokit.repos.getContent({
+      owner,
+      repo: repoName
+    });
+
+    const readmeContent = Buffer.from(readme.data.content, 'base64').toString('utf-8');
+    const doiRegex = /10.\d{4,9}\/[-._;()/:A-Z0-9]+/i;
+    const doi = doiRegex.exec(readmeContent);
+
+    if (doi) {
+      return [true, doi[0]];
+    }
+  } catch(error) {
+    return [false, ""];
+  }
+} 
+
 async function gatherCitationInfo(context, owner, repo) {
   // Verify there is no PR open already for the CITATION.cff file
   const openPR = await context.octokit.pulls.list({
@@ -676,34 +782,11 @@ async function gatherCitationInfo(context, owner, repo) {
     return;
   }
 
-  // Create a new file with the contents of the CITATION.cff file
-  // Get the list of contributors from the repo
-  let contributors = await context.octokit.repos.listContributors({
-    repo,
-    owner,
-  });
-
-  // Get the programming languages used in the repo
-  let languages = await context.octokit.repos.listLanguages({
-    repo,
-    owner,
-  });
-
-  console.log(languages.data);
-  console.log("LANGUAGES USED ABOVE");
-  let languagesUsed = [];
-  if (languages != {}) {
-    languagesUsed = Object.keys(languages.data);
-  }
-
   // Get the release data of the repo
   let releases = await context.octokit.repos.listReleases({
     repo,
     owner,
   });
-
-  console.log(releases.data);
-  console.log("RELEASES DATA ABOVE");
 
   // Get the metadata of the repo
   let repoData = await context.octokit.repos.get({
@@ -711,56 +794,25 @@ async function gatherCitationInfo(context, owner, repo) {
     owner,
   });
 
-  // Start gathering data for the CITATION.cff file
+  console.log(repoData.data);
 
-  // Get user information for each contributor
-  let userInfo = await Promise.all(
-    contributors.data.map(async (contributor) => {
-      return await context.octokit.users.getByUsername({
-        username: contributor.login,
-      });
-    })
-  );
-
-  // Parse the user information to get the first and last name
-  console.log(userInfo);
-  console.log("USER INFO ABOVE");
-  let parsedAuthors = [];
-  if (userInfo.length > 0) {
-    userInfo.map((author) => {
-      if (author.data.type === "Bot") {
-        return;
-      }
-      let authorObj = {};
-      const parsedNames = human.parseName(author.data.name);
-      if (author.data.company) {
-        authorObj["affiliation"] = author.data.company;
-      }
-      if (parsedNames.firstName) {
-        authorObj["given-names"] = parsedNames.firstName;
-      }
-      if (parsedNames.lastName) {
-        authorObj["family-names"] = parsedNames.lastName;
-      }
-      if (author.data.email) {
-        authorObj["email"] = author.data.email;
-      }
-      parsedAuthors.push(authorObj);
-    });
-  }
+  // Get authors of repo
+  let parsedAuthors = await gatherCitationAuthors(context, owner, repo);
+  // Get DOI of repo (if it exists)
+  let doi = await getDOI(context, owner, repo);
   // Get the repo description
   let abstract = repoData.data.description;
+  // Get the license of the repo
+  let license_name = repoData.data.license;
 
   // date released is dependent on whether the repo has a release data (if not, use the created date)
   let date_released;
   if (repoData.data.released_at) {
     date_released = repoData.data.released_at;
   } else {
-    date_released = new Date().toISOString();
+    // The date needs to be in this pattern: 
+    date_released = new Date().toISOString().split('T')[0];
   }
-
-  // Get the license of the repo
-  let license_name = repoData.data.license;
 
   // Get the homepage of the repo
   let url;
@@ -771,23 +823,31 @@ async function gatherCitationInfo(context, owner, repo) {
   // Get the keywords of the repo
   let keywords = [];
   if (repoData.data.topics != null && repoData.data.topics.length > 0) {
+    console.log(repoData.data.topics)
     keywords = repoData.data.topics;
+    console.log(keywords)
   }
 
-  // Create json for yaml file
+  // Begin creating json for CITATION.cff file
   let citation_obj = {
     "cff-version": "1.2.0",
     message: "If you use this software, please cite it as below.",
-    type: "Software",
+    type: "software",
     identifiers: [
       {
         type: "doi",
-        description: "DOI for this software's record on Zenodo ",
+        description: "DOI for this software's record on Zenodo.",
       },
     ],
     "repository-code": repoData.data.html_url,
     title: repoData.data.name,
   };
+
+  if (doi[0]) {
+    citation_obj["identifiers"][0]["value"] = doi[1];
+  } else {
+    citation_obj["identifiers"][0]["value"] = "";
+  }
 
   if (parsedAuthors.length > 0) {
     citation_obj["authors"] = parsedAuthors;
@@ -799,6 +859,8 @@ async function gatherCitationInfo(context, owner, repo) {
 
   if (abstract != null) {
     citation_obj["abstract"] = abstract;
+  } else {
+    citation_obj["abstract"] = "";
   }
 
   if (keywords.length > 0) {
@@ -813,6 +875,8 @@ async function gatherCitationInfo(context, owner, repo) {
 
   if (date_released != null && date_released != "") {
     citation_obj["date-released"] = date_released;
+  } else {
+    citation_obj["date-released"] = ""
   }
 
   // sort keys alphabetically
@@ -831,7 +895,11 @@ async function gatherCitationInfo(context, owner, repo) {
     repo,
     owner,
     issue_number: context.payload.issue.number,
-    body: "```yaml\n" + citation_template + "\n```" + `\n\nHere is the information I was able to gather from this repo. If you would like to add more please copy the context and update accordingly and reply with "@codefair-app UPDATE". If you would like me to create a PR as is please reply with "@codefair-app CONTINUE".`,
+    body:
+      "```yaml\n" +
+      citation_template +
+      "\n```" +
+      `\n\nHere is the information I was able to gather from this repo. If you would like to add more please copy the context and update accordingly and reply with "@codefair-app UPDATE". If you would like me to create a PR as is please reply with "@codefair-app CONTINUE".`,
   });
 
   // Comment information on the issue
