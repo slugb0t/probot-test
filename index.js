@@ -2,7 +2,6 @@ const axios = require("axios");
 const human = require("humanparser");
 const licensesAvail = require("./public/assets/data/licenses.json");
 const yaml = require("js-yaml");
-const { split } = require("postcss/lib/list");
 /**
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
@@ -10,7 +9,6 @@ const { split } = require("postcss/lib/list");
 module.exports = (app) => {
   // Opens a PR every time someone installs your app for the first time
   // On adding the app to a repo
-  // TODO: If issue is closed without a license or citation, don't create the issue again
   app.on("installation.created", async (context) => {
     const owner = context.payload.installation.account.login;
 
@@ -91,11 +89,12 @@ module.exports = (app) => {
         }
       } else {
         // Check if issue is open and close it
+        // TODO: UPDATE THE CREATOR WHEN MOVING TO PROD
         const issue = await context.octokit.issues.listForRepo({
           owner,
           repo: repo,
           state: "open",
-          creator: "codefair-app[bot]",
+          creator: "codefair-test[bot]",
           title: "No license file found",
         });
 
@@ -299,7 +298,7 @@ module.exports = (app) => {
         let yamlContext = userComment.substring(start, end);
         // Load the input string into a JavaScript object
         // Split yamlContext into an array of strings based on hyphen
-        let splitContext = yamlContext.split("\r\n").map(item => item.trim());
+        let splitContext = yamlContext.split("\r\n").map((item) => item.trim());
         console.log(splitContext);
 
         // await createCitationFile(context, owner, repo, yaml.dump(mergedObject));
@@ -361,11 +360,8 @@ async function verifyFirstIssue(context, owner, repo, title) {
     owner,
     repo,
     creator: "codefair-app[bot]",
-    state: "all",
+    state: "all"
   });
-
-  console.log("VERIFY FIRST ISSUE (OPEN OR CLOSE)");
-  console.log(issues.data);
 
   if (issues.data.length > 0) {
     // iterate through issues to see if there is an issue with the same title
@@ -464,55 +460,12 @@ async function createIssue(context, owner, repo, title, body) {
   }
 }
 
-// TODO: DELETE IF NOT NEEDED
-async function gatherAuthorInformation(yamlContext) {
-  let parsedYaml = yamlContext.indexOf("- authors:\r\n") + "- authors\r\n".length;
-  let parsedYaml2 = yamlContext.indexOf("- cff-version:")
-  let content = yamlContext.substring(parsedYaml, parsedYaml2).trim();
-  // Split based on hyphen
-  let splitContent = content.split("-").map(item => item.replace(/\r\n/g, "").trim());
-  // Remove first element
-  splitContent.shift();
-  // console.log(splitContent)
-  // Create an array of each element in splitContent based on the commas
-  let authors = splitContent.map(item => item.split(","));
-  // trim each item in authors
-  authors = authors.map(item => item.map(author => author.trim()));
-  // console.log(authors);
-  let authorsObj = [];
-  for (let i = 0; i < authors.length; i++) {
-    let authorObj = {};
-    for (let j = 0; j < authors[i].length; j++) {
-      let splitAuthor = authors[i][j].split(":");
-      if (splitAuthor[0].trim().toLowerCase() === "email") {
-        authorObj[splitAuthor[0].trim().toLowerCase()] = splitAuthor[1].trim();
-      }
-      if (splitAuthor[0].trim().toLowerCase() === "name") {
-        let parsedName = human.parseName(splitAuthor[1].trim());
-        if (parsedName.firstName) {
-          authorObj["given-names"] = parsedName.firstName;
-        }
-        if (parsedName.lastName) {
-          authorObj["family-names"] = parsedName.lastName;
-        }
-      }
-      if (splitAuthor[0].trim().toLowerCase() === "affiliation") {
-        authorObj[splitAuthor[0].trim().toLowerCase()] = splitAuthor[1].trim();
-      }
-    }
-    authorsObj.push(authorObj);
-  }
-  console.log(authorsObj);
-  return authorsObj;
-}
-
 async function gatherCitationAuthors(context, owner, repo) {
   // Get the list of contributors from the repo
   const contributors = await context.octokit.repos.listContributors({
     repo,
     owner,
   });
-
 
   // Get user information for each contributors
   let userInfo = await Promise.all(
@@ -522,7 +475,6 @@ async function gatherCitationAuthors(context, owner, repo) {
       });
     })
   );
-
 
   let parsedAuthors = [];
   if (userInfo.length > 0) {
@@ -697,7 +649,6 @@ async function createCitationFile(context, owner, repo, citationText) {
 
   // Get the default branch of the repo
   let default_branch = await getDefaultBranch(context, owner, repo);
-  console.log(default_branch);
   let default_branch_name = default_branch.data.name;
 
   // Create a new branch based off the default branch
@@ -729,12 +680,27 @@ async function createCitationFile(context, owner, repo, citationText) {
     maintainer_can_modify: true,
   });
 
-  // Comment on issue to notify user that citation has been added
+  // Get the link to the CITATION.cff file in the branch created
+  let citation_link = await context.octokit.repos.getContent({
+    repo,
+    owner,
+    path: "CITATION.cff",
+    ref: `refs/heads/${branch}`,
+  })
+
+  citation_link = citation_link.data.html_url;
+  let edit_link = citation_link.replace("blob", "edit");
+  
   await context.octokit.issues.createComment({
     repo,
     owner,
     issue_number: context.payload.issue.number,
-    body: `A CITATION.cff file has been added to a new branch and a pull request is awaiting approval. I will close this issue automatically once the pull request is approved.`,
+    body:
+      "```yaml\n" +
+      citationText +
+      "\n```" +
+      `\n\nHere is the information I was able to gather from this repo. If you would like to add more please follow the link to edit using the GitHub UI. Once you are satisfied with the CITATION.cff you can merge the pull request and I will close this issue.
+      \n\n[Edit CITATION.cff](${edit_link})`,
   });
 }
 
@@ -742,20 +708,22 @@ async function getDOI(context, owner, repoName) {
   try {
     const readme = await context.octokit.repos.getContent({
       owner,
-      repo: repoName
+      repo: repoName,
     });
 
-    const readmeContent = Buffer.from(readme.data.content, 'base64').toString('utf-8');
+    const readmeContent = Buffer.from(readme.data.content, "base64").toString(
+      "utf-8"
+    );
     const doiRegex = /10.\d{4,9}\/[-._;()/:A-Z0-9]+/i;
     const doi = doiRegex.exec(readmeContent);
 
     if (doi) {
       return [true, doi[0]];
     }
-  } catch(error) {
+  } catch (error) {
     return [false, ""];
   }
-} 
+}
 
 async function gatherCitationInfo(context, owner, repo) {
   // Verify there is no PR open already for the CITATION.cff file
@@ -794,8 +762,6 @@ async function gatherCitationInfo(context, owner, repo) {
     owner,
   });
 
-  console.log(repoData.data);
-
   // Get authors of repo
   let parsedAuthors = await gatherCitationAuthors(context, owner, repo);
   // Get DOI of repo (if it exists)
@@ -810,8 +776,8 @@ async function gatherCitationInfo(context, owner, repo) {
   if (repoData.data.released_at) {
     date_released = repoData.data.released_at;
   } else {
-    // The date needs to be in this pattern: 
-    date_released = new Date().toISOString().split('T')[0];
+    // The date needs to be in this pattern:
+    date_released = new Date().toISOString().split("T")[0];
   }
 
   // Get the homepage of the repo
@@ -823,9 +789,9 @@ async function gatherCitationInfo(context, owner, repo) {
   // Get the keywords of the repo
   let keywords = [];
   if (repoData.data.topics != null && repoData.data.topics.length > 0) {
-    console.log(repoData.data.topics)
+    console.log(repoData.data.topics);
     keywords = repoData.data.topics;
-    console.log(keywords)
+    console.log(keywords);
   }
 
   // Begin creating json for CITATION.cff file
@@ -876,7 +842,7 @@ async function gatherCitationInfo(context, owner, repo) {
   if (date_released != null && date_released != "") {
     citation_obj["date-released"] = date_released;
   } else {
-    citation_obj["date-released"] = ""
+    citation_obj["date-released"] = "";
   }
 
   // sort keys alphabetically
@@ -889,32 +855,5 @@ async function gatherCitationInfo(context, owner, repo) {
 
   let citation_template = yaml.dump(citation_obj);
 
-  // Comment the yaml info we gathered and mention if they want us to create the file as if
-  // If they want to add extra info, copy the content and add accordingly then paste back in as comment
-  await context.octokit.issues.createComment({
-    repo,
-    owner,
-    issue_number: context.payload.issue.number,
-    body:
-      "```yaml\n" +
-      citation_template +
-      "\n```" +
-      `\n\nHere is the information I was able to gather from this repo. If you would like to add more please copy the context and update accordingly and reply with "@codefair-app UPDATE". If you would like me to create a PR as is please reply with "@codefair-app CONTINUE".`,
-  });
-
-  // Comment information on the issue
-  // await context.octokit.issues.createComment({
-  //   repo,
-  //   owner,
-  //   issue_number: context.payload.issue.number,
-  //   body: `Creating a CITATION.cff file for the repo with the following contributors: ${contributors.data
-  //     .map((contributor) => contributor.login)
-  //     .join(", ")}\n\n
-  //   user info: ${JSON.stringify(userInfo)}\n\n
-  //   all other metadata: ${JSON.stringify(repoData.data)}\n\n
-  //   all parsedAuthors: ${JSON.stringify(parsedAuthors)}\n\n
-  //   release data: ${JSON.stringify(releases.data)}\n\n
-  //   languages used: ${JSON.stringify(languages.data)}\n\n
-  //   `,
-  // });
+  await createCitationFile(context, owner, repo, citation_template);
 }
