@@ -711,6 +711,67 @@ async function createCitationFile(context, owner, repo, citationText) {
   });
 }
 
+async function createCodeMetaFile(context, owner, repo, codeMetaText) {
+  // Create a new branch
+  const branch = `codemeta-${Math.floor(Math.random() * 9999)}`;
+
+  // Get the default branch of the repo
+  let default_branch = await getDefaultBranch(context, owner, repo);
+  let default_branch_name = default_branch.data.name;
+
+  // Create a new branch based off the default branch
+  await context.octokit.git.createRef({
+    repo,
+    owner,
+    ref: `refs/heads/${branch}`,
+    sha: default_branch.data.commit.sha,
+  });
+
+  // Create a new file
+  await context.octokit.repos.createOrUpdateFileContents({
+    repo,
+    owner,
+    path: "codemeta.json",
+    message: `feat: ✨ add codemeta.json file`,
+    content: Buffer.from(codeMetaText).toString("base64"),
+    branch,
+  });
+
+  // Create a PR with the branch
+  await context.octokit.pulls.create({
+    repo,
+    owner,
+    title: "feat: ✨ codemeta.json created for repo",
+    head: branch,
+    base: default_branch_name,
+    body: `Resolves #${context.payload.issue.number}`,
+    maintainer_can_modify: true,
+  });
+
+  // Get the link to the codemeta.json file in the branch created
+  let codemeta_link = await context.octokit.repos.getContent({
+    repo,
+    owner,
+    path: "codemeta.json",
+    ref: `refs/heads/${branch}`,
+  });
+
+  codemeta_link = codemeta_link.data.html_url;
+  const edit_link = codemeta_link.replace("blob", "edit");
+
+  await context.octokit.issues.createComment({
+    repo,
+    owner,
+    issue_number: context.payload.issue.number,
+    body:
+      "```json\n" +
+      codeMetaText +
+      "\n```" +
+      `\n\nHere is the information I was able to gather from this repo. If you would like to add more please follow the link to edit using the GitHub UI. Once you are satisfied with the codemeta.json you can merge the pull request and I will close this issue.
+      \n\n[Edit codemeta.json](${edit_link})`,
+  });
+}
+
 async function getDOI(context, owner, repoName) {
   try {
     const readme = await context.octokit.repos.getContent({
@@ -953,7 +1014,7 @@ async function gatherCodeMetaInfo(context, owner, repo) {
 
   let codemeta_template = yaml.dump(metadata);
 
-  await createCodeMetaFile(context, owner, repo, codemeta_template, languagesUsed);
+  await createCodeMetaFile(context, owner, repo, codemeta_template);
 
   // Comment on issue
   await context.octokit.issues.createComment({
