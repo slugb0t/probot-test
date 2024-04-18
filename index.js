@@ -55,7 +55,7 @@ module.exports = (app) => {
 
       if (!citation && license) {
         // License was found but no citation file was found
-        const title = "No citation file found";
+        const title = "No citation file found [codefair-app]";
         const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
           If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
           `;
@@ -80,8 +80,8 @@ module.exports = (app) => {
       if (!license) {
         // No license was found, make an issue if one was never made before
         // If the issue was close, don't make another
-        console.log("No license file found");
-        const title = "No license file found";
+        console.log("No license file found [codefair-app]");
+        const title = "No license file found [codefair-app]";
         const body = `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software's dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-app MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
@@ -95,7 +95,7 @@ module.exports = (app) => {
           repo: repo,
           state: "open",
           creator: "codefair-test[bot]",
-          title: "No license file found",
+          title: "No license file found [codefair-app]",
         });
 
         if (issue.data.length > 0) {
@@ -114,7 +114,7 @@ module.exports = (app) => {
       }
 
       if (!citation && license) {
-        const title = "No citation file found";
+        const title = "No citation file found [codefair-app]";
         const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
           If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
           `;
@@ -189,7 +189,7 @@ module.exports = (app) => {
     if (!license) {
       console.log("No license file found (push)");
       // If issue has been created, create one
-      const title = "No license file found";
+      const title = "No license file found [codefair-app]";
       const body = `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software's dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-app MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
       let verify = await verifyFirstIssue(context, owner, repo, title);
       if (!verify) {
@@ -202,13 +202,13 @@ module.exports = (app) => {
         repo: repo,
         state: "open",
         creator: "codefair-app[bot]",
-        title: "No license file found",
+        title: "No license file found [codefair-app]",
       });
 
       if (issue.data.length > 0) {
         // If title if issue is found, close the issue
         for (let i = 0; i < issue.data.length; i++) {
-          if (issue.data[i].title === "No license file found") {
+          if (issue.data[i].title === "No license file found [codefair-app]") {
             await context.octokit.issues.update({
               repo,
               owner,
@@ -221,7 +221,7 @@ module.exports = (app) => {
     }
 
     if (!citation && license) {
-      const title = "No citation file found";
+      const title = "No citation file found [codefair-app]";
       const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
       If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
       `;
@@ -236,13 +236,13 @@ module.exports = (app) => {
         repo: repo,
         state: "open",
         creator: "codefair-app[bot]",
-        title: "No citation file found",
+        title: "No citation file found [codefair-app]",
       });
 
       if (issue.data.length > 0) {
         // If title if issue is found, close the issue
         for (let i = 0; i < issue.data.length; i++) {
-          if (issue.data[i].title === "No citation file found") {
+          if (issue.data[i].title === "No citation file found [codefair-app]") {
             await context.octokit.issues.update({
               repo,
               owner,
@@ -263,7 +263,7 @@ module.exports = (app) => {
     console.log("should all be true above to move forward");
 
     if (
-      context.payload.issue.title === "No license file found" &&
+      context.payload.issue.title === "No license file found [codefair-app]" &&
       ["MEMBER", "OWNER"].includes(comment.author_association) &&
       comment.body.includes("codefair-app")
     ) {
@@ -279,7 +279,7 @@ module.exports = (app) => {
     }
 
     if (
-      context.payload.issue.title === "No citation file found" &&
+      context.payload.issue.title === "No citation file found [codefair-app]" &&
       ["MEMBER", "OWNER"].includes(comment.author_association) &&
       comment.body.includes("codefair-app")
     ) {
@@ -337,7 +337,6 @@ module.exports = (app) => {
 
 async function getDefaultBranch(context, owner, repo) {
   let default_branch;
-  let default_branch_name;
 
   try {
     default_branch = await context.octokit.repos.getBranch({
@@ -345,7 +344,7 @@ async function getDefaultBranch(context, owner, repo) {
       repo,
       branch: context.payload.repository.default_branch,
     });
-    default_branch_name = default_branch.data.name;
+
     return default_branch;
   } catch (error) {
     console.log("Error getting the default branch");
