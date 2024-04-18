@@ -15,54 +15,50 @@ module.exports = (app) => {
     // shows all repos you've installed the app on
     for (const repository of context.payload.repositories) {
       const repo = repository.name;
-
-      let license = await checkForLicense(context, owner, repo);
-      let citation = await checkForCitation(context, owner, repo);
+      const license = await checkForLicense(context, owner, repo);
+      const citation = await checkForCitation(context, owner, repo);
+      const codemeta = await checkForCodeMeta(context, owner, repo);
 
       if (!license) {
-        console.log("No license file found");
+        console.log("No license file found [codefair-app]");
         // If issue has been created, create one
-        const title = "No license file found";
+        const title = "No license file found [codefair-app]";
         const body = `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software's dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-app MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
-        let verify = await verifyFirstIssue(context, owner, repo, title);
+        const verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
         }
       } else {
-        // License was found, close the issue if one was created
-        const issue = await context.octokit.issues.listForRepo({
-          owner,
-          repo: repo,
-          state: "open",
-          creator: "codefair-app[bot]",
-          title: "No license file found",
-        });
-
-        if (issue.data.length > 0) {
-          // If title issue is found, close the issue
-          for (let i = 0; i < issue.data.length; i++) {
-            if (issue.data[i].title === "No license file found") {
-              await context.octokit.issues.update({
-                repo,
-                owner,
-                issue_number: issue.data[i].number,
-                state: "closed",
-              });
-            }
-          }
-        }
+        const title = "No license file found [codefair-app]";
+        await closeOpenIssue(context, owner, repo, title);
       }
 
       if (!citation && license) {
         // License was found but no citation file was found
-        const title = "No citation file found";
+        const title = "No citation file found [codefair-app]";
         const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
-          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
           `;
-        let verify = await verifyFirstIssue(context, owner, repo, title);
+        const verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
         }
+      } else if (citation) {
+        const title = "No citation file found [codefair-app]";
+        await closeOpenIssue(context, owner, repo, title);
+      }
+
+      if (!codemeta && license) {
+        // License was found but no codemeta.json exists
+        const title = "No codemeta.json file found [codefair-app]";
+        const body = `To make your software reusable a codemetada.json is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to provide software metadata to transfer metadata between software authors, repositories, and others, for the purposes of archiving, sharing, indexing, citing and discovering software. If you would like me to generate a codemeta.json file for you, please reply here with '@codefair-app Yes'. I will gather the information required in the codemeta.json that I can find automatically from your repository and include that information in my reply for your edit or approve. You can also add a codemeta.json file yourself and I will close this issue when I detect it on the main branch.`;
+        const verify = await verifyFirstIssue(context, owner, repo, title);
+        if (!verify) {
+          await createIssue(context, owner, repo, title, body);
+        }
+      } else if (codemeta) {
+        const title = "No codemeta.json file found [codefair-app]";
+        await closeOpenIssue(context, owner, repo, title);
       }
     }
   });
@@ -76,12 +72,13 @@ module.exports = (app) => {
       const repo = repository.name;
       const license = await checkForLicense(context, owner, repo);
       const citation = await checkForCitation(context, owner, repo);
+      const codemeta = await checkForCodeMeta(context, owner, repo);
 
       if (!license) {
         // No license was found, make an issue if one was never made before
         // If the issue was close, don't make another
-        console.log("No license file found");
-        const title = "No license file found";
+        console.log("No license file found [codefair-app]");
+        const title = "No license file found [codefair-app]";
         const body = `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software's dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-app MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
         let verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
@@ -89,36 +86,26 @@ module.exports = (app) => {
         }
       } else {
         // Check if issue is open and close it
-        // TODO: UPDATE THE CREATOR WHEN MOVING TO PROD
-        const issue = await context.octokit.issues.listForRepo({
-          owner,
-          repo: repo,
-          state: "open",
-          creator: "codefair-test[bot]",
-          title: "No license file found",
-        });
-
-        if (issue.data.length > 0) {
-          // If title if issue is found, close the issue
-          for (let i = 0; i < issue.data.length; i++) {
-            if (issue.data[i].title === "No license file found") {
-              await context.octokit.issues.update({
-                repo,
-                owner,
-                issue_number: issue.data[i].number,
-                state: "closed",
-              });
-            }
-          }
-        }
+        const title = "No license file found [codefair-app]";
+        await closeOpenIssue(context, owner, repo, title);
       }
 
       if (!citation && license) {
-        const title = "No citation file found";
+        const title = "No citation file found [codefair-app]";
         const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
-          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+          If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
           `;
         let verify = await verifyFirstIssue(context, owner, repo, title);
+        if (!verify) {
+          await createIssue(context, owner, repo, title, body);
+        }
+      }
+
+      if (!codemeta && license) {
+        // License was found but no codemeta.json exists
+        const title = "No codemeta.json file found [codefair-app]";
+        const body = `To make your software reusable a codemetada.json is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to provide software metadata to transfer metadata between software authors, repositories, and others, for the purposes of archiving, sharing, indexing, citing and discovering software. If you would like me to generate a codemeta.json file for you, please reply here with '@codefair-app Yes'. I will gather the information required in the codemeta.json that I can find automatically from your repository and include that information in my reply for your edit or approve. You can also add a codemeta.json file yourself and I will close this issue when I detect it on the main branch.`;
+        const verify = await verifyFirstIssue(context, owner, repo, title);
         if (!verify) {
           await createIssue(context, owner, repo, title, body);
         }
@@ -130,24 +117,9 @@ module.exports = (app) => {
     // Event for when a push is made to the repository (listens to all branches)
     const owner = context.payload.repository.owner.login;
     const repo = context.payload.repository.name;
-
     // Check if push is going to the default branch
-    let default_branch;
-    try {
-      // Get the default branch of the repository
-      default_branch = await context.octokit.repos.getBranch({
-        owner,
-        repo,
-        branch: context.payload.repository.default_branch,
-      });
-    } catch (error) {
-      console.log("Error getting default branch");
-      console.log(error);
-      return;
-    }
+    const default_branch = await getDefaultBranch(context, owner, repo);
 
-    console.log("DEFAULT BELOW");
-    console.log(default_branch.data.name);
     // If push is not going to the default branch don't do anything
     if (context.payload.ref != `refs/heads/${default_branch.data.name}`) {
       console.log("Not pushing to default branch");
@@ -156,25 +128,29 @@ module.exports = (app) => {
 
     // Grab the commits being pushed
     const { commits } = context.payload;
-
-    // Check if there is a license file in the repository
     let license = await checkForLicense(context, owner, repo);
     let citation = await checkForCitation(context, owner, repo);
+    let codemeta = await checkForCodeMeta(context, owner, repo);
 
-    // Check if any of the commits added a LICENSE file
+    // Check if any of the commits added a LICENSE, CITATION, or codemeta file
     if (commits.length > 0) {
       let licenseBeingPushed = false;
       let citationBeingPushed = false;
-      // Verify there is no LICENSE file in the commits
+      let codeMetaBeingPushed = false;
       for (let i = 0; i < commits.length; i++) {
         if (commits[i].added.includes("LICENSE")) {
-          console.log("LICENSE file added");
+          console.log("LICENSE file added with this push");
           licenseBeingPushed = true;
           continue;
         }
         if (commits[i].added.includes("CITATION.cff")) {
-          console.log("CITATION.cff file added");
+          console.log("CITATION.cff file added with this push");
           citationBeingPushed = true;
+          continue;
+        }
+        if (commits[i].added.includes("codemeta.json")) {
+          console.log("codemeta.json file added with this push");
+          codeMetaBeingPushed = true;
           continue;
         }
         if (licenseBeingPushed) {
@@ -183,13 +159,15 @@ module.exports = (app) => {
         if (citationBeingPushed) {
           citation = true;
         }
+        if (codeMetaBeingPushed) {
+          codemeta = true;
+        }
       }
     }
 
     if (!license) {
       console.log("No license file found (push)");
-      // If issue has been created, create one
-      const title = "No license file found";
+      const title = "No license file found [codefair-app]";
       const body = `To make your software reusable a license file is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to choose your license early since it will affect your software's dependencies. If you would like me to add a license file for you, please reply here with the identifier of the license you would like from the [SPDX License List](https://spdx.org/licenses/)  (e.g., comment “@codefair-app MIT” for the MIT license). I will then create a new branch with the corresponding license file and open a pull request for you to review and approve. You can also add a license file yourself and I will close this issue when I detect it on the main branch. If you need help with choosing a license, you can check out https://choosealicense.com.`;
       let verify = await verifyFirstIssue(context, owner, repo, title);
       if (!verify) {
@@ -197,78 +175,51 @@ module.exports = (app) => {
       }
     } else {
       // License was found, close the issue if one was created
-      const issue = await context.octokit.issues.listForRepo({
-        owner,
-        repo: repo,
-        state: "open",
-        creator: "codefair-app[bot]",
-        title: "No license file found",
-      });
-
-      if (issue.data.length > 0) {
-        // If title if issue is found, close the issue
-        for (let i = 0; i < issue.data.length; i++) {
-          if (issue.data[i].title === "No license file found") {
-            await context.octokit.issues.update({
-              repo,
-              owner,
-              issue_number: issue.data[i].number,
-              state: "closed",
-            });
-          }
-        }
-      }
+      const title = "No license file found [codefair-app]";
+      await closeOpenIssue(context, owner, repo, title);
     }
 
     if (!citation && license) {
-      const title = "No citation file found";
+      const title = "No citation file found [codefair-app]";
       const body = `No CITATION.cff file was found at the root of your repository. The [FAIR-BioRS guidelines](https://fair-biors.org/docs/guidelines) suggests to include that file for providing metadata about your software and make it FAIR.
-      If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also ass a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
+      If you would like me to generate a CITATION.cff file for you, please reply with "@codefair-app Yes". I will gather the information required in the CITATION.cff that I can find automatically from your repository and include that information in my reply for your review and edit. You can also add a CITATION.cff file yourself and I will close this issue when I detect it on the main branch.
       `;
       let verify = await verifyFirstIssue(context, owner, repo, title);
       if (!verify) {
         await createIssue(context, owner, repo, title, body);
       }
-    } else {
-      // Check if issue is open and close it
-      const issue = await context.octokit.issues.listForRepo({
-        owner,
-        repo: repo,
-        state: "open",
-        creator: "codefair-app[bot]",
-        title: "No citation file found",
-      });
+    } else if (citation) {
+      const title = "No citation file found [codefair-app]";
+      await closeOpenIssue(context, owner, repo, title);
+    }
 
-      if (issue.data.length > 0) {
-        // If title if issue is found, close the issue
-        for (let i = 0; i < issue.data.length; i++) {
-          if (issue.data[i].title === "No citation file found") {
-            await context.octokit.issues.update({
-              repo,
-              owner,
-              issue_number: issue.data[i].number,
-              state: "closed",
-            });
-          }
-        }
+    if (!codemeta && license) {
+      // License was found but no codemeta.json exists
+      const title = "No codemeta.json file found [codefair-app]";
+      const body = `To make your software reusable a codemetada.json is expected at the root level of your repository, as recommended in the [FAIR-BioRS Guidelines](https://fair-biors.org). No such file was found. It is important to provide software metadata to transfer metadata between software authors, repositories, and others, for the purposes of archiving, sharing, indexing, citing and discovering software. If you would like me to generate a codemeta.json file for you, please reply here with '@codefair-app Yes'. I will gather the information required in the codemeta.json that I can find automatically from your repository and include that information in my reply for your edit or approve. You can also add a codemeta.json file yourself and I will close this issue when I detect it on the main branch.`;
+      const verify = await verifyFirstIssue(context, owner, repo, title);
+      if (!verify) {
+        await createIssue(context, owner, repo, title, body);
       }
+    } else if (codemeta) {
+      const title = "No codemeta.json file found [codefair-app]";
+      await closeOpenIssue(context, owner, repo, title);
     }
   });
 
   app.on("issue_comment.created", async (context) => {
     const owner = context.payload.repository.owner.login;
     const repo = context.payload.repository.name;
-    const { comment } = context.payload;
-    // console.log(comment.body);
+    const userComment = context.payload.comment.body;
+    const authorAssociation = context.payload.comment.author_association;
     console.log("should all be true above to move forward");
 
     if (
-      context.payload.issue.title === "No license file found" &&
-      ["MEMBER", "OWNER"].includes(comment.author_association) &&
-      comment.body.includes("codefair-app")
+      context.payload.issue.title === "No license file found [codefair-app]" &&
+      ["MEMBER", "OWNER"].includes(authorAssociation) &&
+      userComment.includes("codefair-app")
     ) {
       // Check the comment to see if the user has replied with a license
-      const userComment = comment.body;
       const splitComment = userComment.split(" ");
       const selection = splitComment[splitComment.indexOf("@codefair-app") + 1];
 
@@ -279,11 +230,10 @@ module.exports = (app) => {
     }
 
     if (
-      context.payload.issue.title === "No citation file found" &&
-      ["MEMBER", "OWNER"].includes(comment.author_association) &&
-      comment.body.includes("codefair-app")
+      context.payload.issue.title === "No citation file found [codefair-app]" &&
+      ["MEMBER", "OWNER"].includes(authorAssociation) &&
+      userComment.includes("codefair-app")
     ) {
-      const userComment = comment.body;
 
       if (userComment.includes("Yes")) {
         // Gather the information for the CITATION.cff file
@@ -332,12 +282,20 @@ module.exports = (app) => {
         await createCitationFile(context, owner, repo, yamlContext.trim());
       }
     }
+
+    if (context.payload.issue.title === "No codemeta.json file found [codefair-app]" &&
+    ["MEMBER", "OWNER"].includes(authorAssociation) &&
+    userComment.includes("codefair-app")) {
+      if (userComment.includes("Yes")) {
+        // Gather the information for the codemeta.json file
+        await gatherCodeMetaInfo(context, owner, repo);
+      }
+    }
   });
 };
 
 async function getDefaultBranch(context, owner, repo) {
   let default_branch;
-  let default_branch_name;
 
   try {
     default_branch = await context.octokit.repos.getBranch({
@@ -345,12 +303,38 @@ async function getDefaultBranch(context, owner, repo) {
       repo,
       branch: context.payload.repository.default_branch,
     });
-    default_branch_name = default_branch.data.name;
+
     return default_branch;
   } catch (error) {
     console.log("Error getting the default branch");
     console.log(error);
     return;
+  }
+}
+
+async function closeOpenIssue(context, owner, repo, title) {
+  // Check if issue is open and close it
+  // TODO: UPDATE THE CREATOR WHEN MOVING TO PROD
+  const issue = await context.octokit.issues.listForRepo({
+    owner,
+    repo: repo,
+    state: "open",
+    creator: "codefair-app[bot]",
+    title: title,
+  });
+
+  if (issue.data.length > 0) {
+    // If title if issue is found, close the issue
+    for (let i = 0; i < issue.data.length; i++) {
+      if (issue.data[i].title === title) {
+        await context.octokit.issues.update({
+          repo,
+          owner,
+          issue_number: issue.data[i].number,
+          state: "closed",
+        });
+      }
+    }
   }
 }
 
@@ -360,7 +344,7 @@ async function verifyFirstIssue(context, owner, repo, title) {
     owner,
     repo,
     creator: "codefair-app[bot]",
-    state: "all"
+    state: "all",
   });
 
   if (issues.data.length > 0) {
@@ -405,6 +389,20 @@ async function checkForCitation(context, owner, repo) {
       owner,
       repo,
       path: "CITATION.cff",
+    });
+
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function checkForCodeMeta(context, owner, repo) {
+  try {
+    await context.octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path: "codemeta.json",
     });
 
     return true;
@@ -460,7 +458,7 @@ async function createIssue(context, owner, repo, title, body) {
   }
 }
 
-async function gatherCitationAuthors(context, owner, repo) {
+async function gatherRepoAuthors(context, owner, repo, fileType) {
   // Get the list of contributors from the repo
   const contributors = await context.octokit.repos.listContributors({
     repo,
@@ -483,10 +481,19 @@ async function gatherCitationAuthors(context, owner, repo) {
         return;
       }
 
-      let authorObj = {};
+      let authorObj = {
+        "orcid": "",
+      };
       const parsedNames = human.parseName(author.data.name);
-      if (author.data.company) {
+      if (author.data.company && fileType === "citation") {
         authorObj["affiliation"] = author.data.company;
+      }
+
+      if (author.data.company && fileType == "codemeta") {
+        authorObj["affiliation"] = {
+          "@type": "Organization",
+          "name": author.data.company,
+        }
       }
 
       if (parsedNames.firstName) {
@@ -686,11 +693,11 @@ async function createCitationFile(context, owner, repo, citationText) {
     owner,
     path: "CITATION.cff",
     ref: `refs/heads/${branch}`,
-  })
+  });
 
   citation_link = citation_link.data.html_url;
   let edit_link = citation_link.replace("blob", "edit");
-  
+
   await context.octokit.issues.createComment({
     repo,
     owner,
@@ -701,6 +708,67 @@ async function createCitationFile(context, owner, repo, citationText) {
       "\n```" +
       `\n\nHere is the information I was able to gather from this repo. If you would like to add more please follow the link to edit using the GitHub UI. Once you are satisfied with the CITATION.cff you can merge the pull request and I will close this issue.
       \n\n[Edit CITATION.cff](${edit_link})`,
+  });
+}
+
+async function createCodeMetaFile(context, owner, repo, codeMetaText) {
+  // Create a new branch
+  const branch = `codemeta-${Math.floor(Math.random() * 9999)}`;
+
+  // Get the default branch of the repo
+  let default_branch = await getDefaultBranch(context, owner, repo);
+  let default_branch_name = default_branch.data.name;
+
+  // Create a new branch based off the default branch
+  await context.octokit.git.createRef({
+    repo,
+    owner,
+    ref: `refs/heads/${branch}`,
+    sha: default_branch.data.commit.sha,
+  });
+
+  // Create a new file
+  await context.octokit.repos.createOrUpdateFileContents({
+    repo,
+    owner,
+    path: "codemeta.json",
+    message: `feat: ✨ add codemeta.json file`,
+    content: Buffer.from(JSON.stringify(codeMetaText)).toString("base64"),
+    branch,
+  });
+
+  // Create a PR with the branch
+  await context.octokit.pulls.create({
+    repo,
+    owner,
+    title: "feat: ✨ codemeta.json created for repo",
+    head: branch,
+    base: default_branch_name,
+    body: `Resolves #${context.payload.issue.number}`,
+    maintainer_can_modify: true,
+  });
+
+  // Get the link to the codemeta.json file in the branch created
+  let codemeta_link = await context.octokit.repos.getContent({
+    repo,
+    owner,
+    path: "codemeta.json",
+    ref: `refs/heads/${branch}`,
+  });
+
+  codemeta_link = codemeta_link.data.html_url;
+  const edit_link = codemeta_link.replace("blob", "edit");
+
+  await context.octokit.issues.createComment({
+    repo,
+    owner,
+    issue_number: context.payload.issue.number,
+    body:
+      "```json\n" +
+      JSON.stringify(codeMetaText, null, 2) +
+      "\n```" +
+      `\n\nHere is the information I was able to gather from this repo. If you would like to add more please follow the link to edit using the GitHub UI. Once you are satisfied with the codemeta.json you can merge the pull request and I will close this issue.
+      \n\n[Edit codemeta.json](${edit_link})`,
   });
 }
 
@@ -763,7 +831,7 @@ async function gatherCitationInfo(context, owner, repo) {
   });
 
   // Get authors of repo
-  let parsedAuthors = await gatherCitationAuthors(context, owner, repo);
+  let parsedAuthors = await gatherRepoAuthors(context, owner, repo, "citation");
   // Get DOI of repo (if it exists)
   let doi = await getDOI(context, owner, repo);
   // Get the repo description
@@ -856,4 +924,95 @@ async function gatherCitationInfo(context, owner, repo) {
   let citation_template = yaml.dump(citation_obj);
 
   await createCitationFile(context, owner, repo, citation_template);
+}
+
+async function gatherCodeMetaInfo(context, owner, repo) {
+  // Gather metadata from the repo to create a codemeta.json file
+  let repoData = await context.octokit.repos.get({
+    repo,
+    owner,
+  });
+
+  // Get the languages used in the repo
+  console.log(repoData.data);
+  
+  const languagesUsed = await gatherLanguagesUsed(context, owner, repo);
+  const authors = await gatherRepoAuthors(context, owner, repo, "codemeta");
+  const codeRepository = repoData.data.html_url;
+  const dataCreated = repoData.data.created_at;
+  const dataModified = repoData.data.updated_at;
+  const keywords = repoData.data.topics;
+  const license = repoData.data.license.spdx_id;
+  const description = repoData.data.description;
+  const identifier = repoData.data.id;
+  const name = repoData.data.full_name;
+  let issueTracker = repoData.data.issues_url;
+  // TODO: See if those two api calls are needed
+
+  let metadata = {
+    "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+    "@type": "SoftwareSourceCode",
+  }
+
+  if (license != null || license != "") {
+    metadata["license"] = `https://spdx.org/licenses/${license}`;
+  }
+
+  if (codeRepository != null || codeRepository != "") {
+    metadata["codeRepository"] = codeRepository;
+  }
+
+  if (dataCreated != null || dataCreated != "") {
+    metadata["dateCreated"] = dataCreated.split("T")[0];
+  }
+
+  if (dataModified != null || dataModified != "") {
+    metadata["dateModified"] = dataModified.split("T")[0];
+  }
+
+  if (keywords.length > 0) {
+    metadata["keywords"] = keywords;
+  } else {
+    metadata["keywords"] = [];
+  }
+
+  if (description != null || description != "") {
+    metadata["description"] = description;
+  }
+
+  if (identifier != null || identifier != "") {
+    metadata["identifier"] = identifier;
+  }
+
+  if (name != null || name != "") {
+    metadata["name"] = name;
+  }
+
+  if (issueTracker != null || issueTracker != "") {
+    // Remove the {/number} from the issue tracker url
+    issueTracker = issueTracker.replace("{/number}", "");
+    metadata["issueTracker"] = issueTracker;
+  }
+
+  if (languagesUsed.length > 0) {
+    metadata["programmingLanguage"] = languagesUsed;
+  } else {
+    metadata["programmingLanguage"] = [];
+  }
+
+  if (authors.length > 0) {
+    metadata["author"] = authors;
+  } else {
+    metadata["author"] = [];
+  }
+
+  // sort keys alphabetically
+  metadata = Object.keys(metadata)
+    .sort()
+    .reduce((acc, key) => {
+      acc[key] = metadata[key];
+      return acc;
+    }, {});
+
+  await createCodeMetaFile(context, owner, repo, metadata);
 }
