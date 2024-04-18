@@ -733,7 +733,7 @@ async function createCodeMetaFile(context, owner, repo, codeMetaText) {
     owner,
     path: "codemeta.json",
     message: `feat: ✨ add codemeta.json file`,
-    content: Buffer.from(codeMetaText).toString("base64"),
+    content: Buffer.from(JSON.stringify(codeMetaText)).toString("base64"),
     branch,
   });
 
@@ -765,7 +765,7 @@ async function createCodeMetaFile(context, owner, repo, codeMetaText) {
     issue_number: context.payload.issue.number,
     body:
       "```json\n" +
-      codeMetaText +
+      JSON.stringify(codeMetaText, null, 2) +
       "\n```" +
       `\n\nHere is the information I was able to gather from this repo. If you would like to add more please follow the link to edit using the GitHub UI. Once you are satisfied with the codemeta.json you can merge the pull request and I will close this issue.
       \n\n[Edit codemeta.json](${edit_link})`,
@@ -946,7 +946,7 @@ async function gatherCodeMetaInfo(context, owner, repo) {
   const description = repoData.data.description;
   const identifier = repoData.data.id;
   const name = repoData.data.full_name;
-  const issueTracker = repoData.data.issues_url;
+  let issueTracker = repoData.data.issues_url;
   // TODO: See if those two api calls are needed
 
   let metadata = {
@@ -963,11 +963,11 @@ async function gatherCodeMetaInfo(context, owner, repo) {
   }
 
   if (dataCreated != null || dataCreated != "") {
-    metadata["dateCreated"] = dataCreated;
+    metadata["dateCreated"] = dataCreated.split("T")[0];
   }
 
   if (dataModified != null || dataModified != "") {
-    metadata["dateModified"] = dataModified;
+    metadata["dateModified"] = dataModified.split("T")[0];
   }
 
   if (keywords.length > 0) {
@@ -989,6 +989,8 @@ async function gatherCodeMetaInfo(context, owner, repo) {
   }
 
   if (issueTracker != null || issueTracker != "") {
+    // Remove the {/number} from the issue tracker url
+    issueTracker = issueTracker.replace("{/number}", "");
     metadata["issueTracker"] = issueTracker;
   }
 
@@ -1012,15 +1014,5 @@ async function gatherCodeMetaInfo(context, owner, repo) {
       return acc;
     }, {});
 
-  let codemeta_template = yaml.dump(metadata);
-
-  await createCodeMetaFile(context, owner, repo, codemeta_template);
-
-  // Comment on issue
-  await context.octokit.issues.createComment({
-    repo,
-    owner,
-    issue_number: context.payload.issue.number,
-    body: `I have gathered the information required for the codemeta.json file.\n\n${JSON.stringify(repoData.data)}\n\n${languagesUsed}`,
-  });
+  await createCodeMetaFile(context, owner, repo, metadata);
 }
